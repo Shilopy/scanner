@@ -3,36 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Сканер штрих-кода</title>
+<title>Сканер — Soudal</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --blue: #5b9cf6; --purple: #a78bfa; --green: #4ade80; --red: #f87171;
-  --bg: #0a0a0a; --card: #1c1c1e; --border: #333;
+  --orange: #fb923c; --bg: #0a0a0a; --card: #1c1c1e; --border: #2c2c2e;
   --text: #f0f0f0; --sub: #888;
 }
-html, body {
-  height: 100%; background: var(--bg); color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  overflow-x: hidden;
-}
-.header { padding: 16px 18px 10px; text-align: center; }
-.header h1 { font-size: 18px; font-weight: 700; }
-.header p  { font-size: 13px; color: var(--sub); margin-top: 4px; }
+html, body { background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
-/* scanner container — html5-qrcode рендерит видео сюда */
-#reader {
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #000;
+/* ── header ── */
+.header { padding: 14px 18px 8px; text-align: center; }
+.header h1 { font-size: 17px; font-weight: 700; }
+.header p  { font-size: 12px; color: var(--sub); margin-top: 3px; }
+
+/* ── mode tabs ── */
+.tabs { display: flex; gap: 8px; padding: 0 18px 10px; max-width: 480px; margin: 0 auto; }
+.tab {
+  flex: 1; padding: 9px 4px; border-radius: 10px; border: 1.5px solid var(--border);
+  background: var(--card); color: var(--sub); font-size: 13px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all .15s;
+  -webkit-tap-highlight-color: transparent;
 }
-/* убираем лишние элементы которые html5-qrcode добавляет */
-#reader__dashboard_section_swaplink { display: none !important; }
-#reader__status_span { display: none !important; }
+.tab.active { border-color: var(--blue); color: var(--blue); background: rgba(91,156,246,.1); }
+
+/* ── reader ── */
+#reader {
+  width: 100%; max-width: 480px; margin: 0 auto;
+  border-radius: 14px; overflow: hidden; background: #000;
+}
+#reader__dashboard_section_swaplink,
+#reader__status_span,
 #reader__header_message { display: none !important; }
 #reader img { display: none; }
 #reader select {
@@ -41,92 +45,109 @@ html, body {
   padding: 6px 10px; font-size: 13px; margin: 6px auto; display: block;
 }
 
-.bottom {
-  padding: 14px 18px 28px;
-  display: flex; flex-direction: column; gap: 10px;
-  max-width: 480px; margin: 0 auto;
-}
-#status {
-  text-align: center; font-size: 13px; color: var(--sub);
-  min-height: 18px; transition: color .2s;
-}
+/* ── bottom ── */
+.bottom { padding: 12px 18px 28px; display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin: 0 auto; }
+
+#status { text-align: center; font-size: 13px; color: var(--sub); min-height: 17px; transition: color .2s; }
 #status.ok  { color: var(--green); }
 #status.err { color: var(--red); }
+#status.loading { color: var(--orange); }
 
 .row { display: flex; gap: 8px; }
-input[type=number] {
+input[type=text], input[type=number] {
   flex: 1; padding: 12px 14px; background: var(--card);
   border: 1.5px solid var(--border); border-radius: 10px;
-  color: var(--text); font-size: 15px; outline: none;
-  -webkit-appearance: none; -moz-appearance: textfield;
+  color: var(--text); font-size: 15px; outline: none; -webkit-appearance: none;
 }
-input[type=number]:focus { border-color: var(--blue); }
-input[type=number]::placeholder { color: #444; }
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+input:focus { border-color: var(--blue); }
+input::placeholder { color: #444; }
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-.btn {
-  padding: 12px 18px; border-radius: 10px; border: none;
-  font-size: 14px; font-weight: 600; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: opacity .15s;
-}
+.btn { padding: 12px 18px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; transition: opacity .15s; }
 .btn:active { opacity: .7; }
 .btn-gray  { background: var(--card); color: #ccc; }
-.btn-start { background: var(--blue); color: #fff; width: 100%; padding: 13px; font-size: 15px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.btn-start { background: var(--blue); color: #fff; width: 100%; padding: 13px; font-size: 15px;
+  border-radius: 12px; border: none; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; }
 
+/* ── result card ── */
 #result-card {
-  display: none; background: var(--card);
-  border: 1.5px solid var(--border); border-radius: 12px;
-  padding: 14px 16px; flex-direction: column; gap: 5px;
+  display: none; background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 14px 16px; flex-direction: column; gap: 6px;
 }
 #result-card.show { display: flex; }
-#result-card .lbl { font-size: 11px; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; }
-#result-card .val { font-size: 26px; font-weight: 800; color: var(--blue); letter-spacing: 2px; }
-#result-card .note { font-size: 12px; color: var(--sub); }
+.result-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: .5px; align-self: flex-start;
+}
+.badge-ean  { background: rgba(91,156,246,.15); color: var(--blue); }
+.badge-crpt { background: rgba(74,222,128,.15); color: var(--green); }
+.badge-err  { background: rgba(248,113,113,.15); color: var(--red); }
 
+.result-row { display: flex; flex-direction: column; gap: 2px; }
+.result-row .lbl { font-size: 11px; color: var(--sub); }
+.result-row .val { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.result-row .val.big { font-size: 22px; font-weight: 800; color: var(--blue); letter-spacing: 1.5px; }
+
+.divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+/* ── action buttons ── */
 #send-btn {
   display: none; width: 100%; padding: 14px; border-radius: 12px; border: none;
   background: linear-gradient(135deg, var(--blue), var(--purple));
   color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
-  -webkit-tap-highlight-color: transparent; transition: opacity .15s;
+  -webkit-tap-highlight-color: transparent;
 }
 #send-btn.show { display: block; }
-#send-btn:active { opacity: .8; }
-
 #rescan-btn {
-  display: none; width: 100%; padding: 12px; border-radius: 12px; border: none;
-  background: var(--card); color: var(--text);
-  font-size: 14px; font-weight: 600; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  display: none; width: 100%; padding: 12px; border-radius: 10px; border: none;
+  background: var(--card); color: var(--text); font-size: 14px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 #rescan-btn.show { display: block; }
 
-/* success overlay */
+/* ── success ── */
 #success {
   display: none; position: fixed; inset: 0; background: var(--bg); z-index: 99;
   flex-direction: column; align-items: center; justify-content: center;
   gap: 16px; text-align: center; padding: 32px;
 }
 #success.show { display: flex; }
-#success .icon  { font-size: 72px; animation: pop .4s cubic-bezier(.18,.89,.32,1.28); }
+#success .icon  { font-size: 64px; animation: pop .4s cubic-bezier(.18,.89,.32,1.28); }
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
-#success .title { font-size: 22px; font-weight: 800; }
-#success .ean   { font-size: 24px; font-weight: 800; color: var(--blue); letter-spacing: 2px;
+#success .title { font-size: 20px; font-weight: 800; }
+#success .ean   { font-size: 22px; font-weight: 800; color: var(--blue); letter-spacing: 2px;
   background: var(--card); padding: 10px 22px; border-radius: 10px; cursor: pointer; }
-#success .sub   { font-size: 14px; color: var(--sub); max-width: 280px; line-height: 1.6; }
-#success .hint  { font-size: 13px; color: var(--sub); background: var(--card);
-  padding: 10px 14px; border-radius: 10px; max-width: 300px; line-height: 1.5; }
-.again-btn { padding: 12px 28px; border-radius: 10px; border: none;
-  background: var(--card); color: var(--text); font-size: 15px; font-weight: 600;
-  cursor: pointer; -webkit-tap-highlight-color: transparent; margin-top: 4px; }
+.steps { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 300px; text-align: left; }
+.step { display: flex; align-items: flex-start; gap: 12px; }
+.step-num { background: var(--blue); color: #fff; font-weight: 800; font-size: 13px;
+  width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.step-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+.open-btn { width: 100%; max-width: 300px; padding: 14px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.copy-btn { padding: 11px 24px; border-radius: 10px; border: 1.5px solid var(--border);
+  background: transparent; color: var(--text); font-size: 14px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.again-btn { padding: 11px 24px; border-radius: 10px; border: none;
+  background: var(--card); color: var(--sub); font-size: 14px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>📷 Сканер штрих-кода</h1>
-  <p>Наведите камеру на штрих-код товара</p>
+  <h1>📷 Сканер</h1>
+  <p>EAN штрих-код или DataMatrix Честного знака</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" id="tab-ean" onclick="switchMode('ean')">📦 EAN / Штрих-код</div>
+  <div class="tab" id="tab-crpt" onclick="switchMode('crpt')">✅ Честный знак</div>
 </div>
 
 <div id="reader"></div>
@@ -134,46 +155,50 @@ input::-webkit-inner-spin-button { -webkit-appearance: none; }
 <div class="bottom">
   <div id="status">Нажмите кнопку для запуска камеры</div>
 
-  <button class="btn-start" id="start-btn" onclick="startScanner()">
-    📷 Запустить камеру
-  </button>
+  <button class="btn-start" id="start-btn" onclick="startScanner()">📷 Запустить камеру</button>
 
   <div class="row">
-    <input id="manual" type="number" inputmode="numeric" placeholder="Или введите EAN вручную">
+    <input id="manual" type="text" inputmode="text" placeholder="Введите код вручную">
     <button class="btn btn-gray" onclick="submitManual()">Найти</button>
   </div>
 
-  <div id="result-card">
-    <div class="lbl">Считан штрих-код (EAN)</div>
-    <div class="val" id="ean-val"></div>
-    <div class="note">Нажмите кнопку ниже — откроется чат с ботом</div>
-  </div>
+  <div id="result-card"></div>
 
-  <button id="send-btn" onclick="sendToBot()">📲 Открыть бот с результатом</button>
+  <button id="send-btn" onclick="sendToBot()">📲 Отправить в бот</button>
   <button id="rescan-btn" onclick="rescan()">🔄 Сканировать ещё раз</button>
 </div>
 
 <!-- Success -->
 <div id="success">
   <div class="icon">✅</div>
-  <div class="title">Код скопирован!</div>
+  <div class="title">Готово!</div>
   <div class="ean" id="success-ean" onclick="copyEAN()"></div>
-  <div class="sub">Сейчас откроется чат с ботом.</div>
-  <div class="hint">💡 Код уже в буфере обмена.<br>Вставьте в поле сообщения (долгое нажатие → Вставить) и отправьте.</div>
-  <button class="again-btn" onclick="resetAll()">🔄 Сканировать ещё</button>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div>
+      <div class="step-text">Код скопирован в буфер обмена</div></div>
+    <div class="step"><div class="step-num">2</div>
+      <div class="step-text">Нажмите кнопку — откроется чат с ботом</div></div>
+    <div class="step"><div class="step-num">3</div>
+      <div class="step-text">Долгое нажатие в поле → <b>Вставить → Отправить</b></div></div>
+  </div>
+  <button class="open-btn" onclick="openBot()">📲 Открыть чат с ботом</button>
+  <button class="copy-btn" id="copy-again-btn" onclick="copyAndConfirm()">📋 Скопировать ещё раз</button>
+  <button class="again-btn" onclick="resetAll()">🔄 Сканировать другой товар</button>
 </div>
 
 <script>
+// ══════════════════════════════════
 const VK_GROUP_ID = '236652808';
+// ══════════════════════════════════
 
 let scanner    = null;
-let scannedEAN = '';
 let scanActive = false;
+let scannedEAN = '';       // код для отправки в бот
+let currentMode = 'ean';  // 'ean' | 'crpt'
 
 const statusEl   = document.getElementById('status');
 const startBtn   = document.getElementById('start-btn');
 const resultCard = document.getElementById('result-card');
-const eanValEl   = document.getElementById('ean-val');
 const sendBtnEl  = document.getElementById('send-btn');
 const rescanBtn  = document.getElementById('rescan-btn');
 
@@ -182,99 +207,282 @@ function setStatus(msg, cls = '') {
   statusEl.className = cls;
 }
 
+// ── Mode switch ──────────────────────────────────────
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('tab-ean').classList.toggle('active', mode === 'ean');
+  document.getElementById('tab-crpt').classList.toggle('active', mode === 'crpt');
+  document.getElementById('manual').placeholder =
+    mode === 'ean' ? 'Введите EAN вручную' : 'Вставьте код DataMatrix';
+  // restart scanner with correct formats
+  if (scanActive && scanner) {
+    scanActive = false;
+    scanner.stop().then(() => { scanner = null; startScanner(); }).catch(() => { scanner = null; startScanner(); });
+  }
+}
+
+// ── Scanner ──────────────────────────────────────────
 async function startScanner() {
   startBtn.style.display = 'none';
   setStatus('Запрашиваю доступ к камере…');
 
+  const eanFormats = [
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.CODE_128,
+    Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.UPC_A,
+    Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.ITF,
+  ];
+  const crptFormats = [
+    Html5QrcodeSupportedFormats.DATA_MATRIX,
+    Html5QrcodeSupportedFormats.QR_CODE,
+    Html5QrcodeSupportedFormats.CODE_128,
+  ];
+
   try {
     scanner = new Html5Qrcode('reader');
-
-    const config = {
-      fps: 15,
-      qrbox: { width: 260, height: 100 },
-      aspectRatio: 1.5,
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.CODE_39,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.ITF,
-      ],
-    };
-
     await scanner.start(
       { facingMode: 'environment' },
-      config,
+      {
+        fps: 15,
+        qrbox: currentMode === 'ean'
+          ? { width: 260, height: 100 }
+          : { width: 220, height: 220 },
+        aspectRatio: currentMode === 'ean' ? 1.7 : 1.0,
+        formatsToSupport: currentMode === 'ean' ? eanFormats : crptFormats,
+      },
       onScanSuccess,
-      () => {} // ignore scan errors (frame without barcode)
+      () => {}
     );
-
     scanActive = true;
-    setStatus('Наведите камеру на штрих-код…');
-
+    setStatus(currentMode === 'ean'
+      ? 'Наведите камеру на штрих-код…'
+      : 'Наведите камеру на квадратный код DataMatrix…');
   } catch(e) {
-    console.error('Camera error:', e);
     startBtn.style.display = 'block';
-
-    if (e.toString().includes('NotAllowedError') || e.toString().includes('Permission')) {
-      setStatus('⛔ Доступ к камере запрещён. Разрешите в настройках браузера или введите EAN вручную.', 'err');
-    } else if (e.toString().includes('NotFoundError')) {
-      setStatus('📵 Камера не найдена. Введите EAN вручную.', 'err');
-    } else {
-      setStatus('❌ Не удалось запустить камеру. Введите EAN вручную.', 'err');
-    }
+    if (/NotAllowed|Permission/i.test(e.toString()))
+      setStatus('⛔ Доступ к камере запрещён. Разрешите в настройках браузера.', 'err');
+    else if (/NotFound/i.test(e.toString()))
+      setStatus('📵 Камера не найдена. Введите код вручную.', 'err');
+    else
+      setStatus('❌ Не удалось запустить камеру. Введите код вручную.', 'err');
   }
 }
 
-function onScanSuccess(decodedText) {
+let lastScan = 0;
+function onScanSuccess(raw) {
   if (!scanActive) return;
-  const ean = decodedText.replace(/\D/g, '');
-  if (ean.length < 8) return;
-
+  const now = Date.now();
+  if (now - lastScan < 1200) return;
+  lastScan = now;
   scanActive = false;
   scanner.stop().catch(() => {});
-
   try { navigator.vibrate?.(120); } catch(_) {}
-  onEANFound(ean);
+
+  if (currentMode === 'crpt') {
+    processHonestSign(raw);
+  } else {
+    const ean = raw.replace(/\D/g, '');
+    if (ean.length < 8) {
+      setStatus('Код не распознан как EAN. Попробуйте ещё.', 'err');
+      rescan(); return;
+    }
+    showEANResult(ean);
+  }
 }
 
-function onEANFound(ean) {
+// ── EAN result ───────────────────────────────────────
+function showEANResult(ean) {
   scannedEAN = ean;
-  eanValEl.textContent = ean;
+  resultCard.innerHTML = `
+    <div class="result-badge badge-ean">📦 EAN штрих-код</div>
+    <div class="result-row">
+      <div class="lbl">Код товара</div>
+      <div class="val big">${ean}</div>
+    </div>
+    <div class="result-row">
+      <div class="lbl">Что дальше</div>
+      <div class="val">Отправьте в бот — получите данные из ERP</div>
+    </div>`;
   resultCard.classList.add('show');
   sendBtnEl.classList.add('show');
   rescanBtn.classList.add('show');
-  setStatus('✅ Штрих-код считан!', 'ok');
+  setStatus('✅ EAN считан!', 'ok');
 }
 
+// ── Честный знак ─────────────────────────────────────
+async function processHonestSign(raw) {
+  setStatus('🔍 Запрашиваю данные Честного знака…', 'loading');
+  resultCard.innerHTML = `<div style="text-align:center;padding:16px;color:var(--sub)">⏳ Загрузка…</div>`;
+  resultCard.classList.add('show');
+
+  // Из DataMatrix кода Честного знака извлекаем GTIN (первые 14 цифр после 01)
+  const gtin = extractGTIN(raw);
+  // Для отправки в бот берём EAN (убираем ведущий ноль из GTIN)
+  const eanFromGtin = gtin ? gtin.replace(/^0+/, '') : '';
+
+  try {
+    // Публичное API Честного знака — проверка кода
+    const encoded = encodeURIComponent(raw);
+    const url = `https://mobile.api.crpt.ru/mobile/check?code=${encoded}`;
+
+    const resp = await fetch(url, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    renderHonestSignResult(data, raw, eanFromGtin || gtin);
+
+  } catch(e) {
+    console.error('Честный знак API:', e);
+    // Даже если API недоступен — показываем что удалось извлечь из кода
+    renderHonestSignFallback(raw, gtin, eanFromGtin);
+  }
+}
+
+function extractGTIN(raw) {
+  // DataMatrix Честного знака: начинается с 01XXXXXXXXXXXXXXXX...
+  const m = raw.match(/^01(\d{14})/);
+  return m ? m[1] : null;
+}
+
+function renderHonestSignResult(data, raw, ean) {
+  const status = data.verified ? '✅ В обороте' : '⚠️ Не верифицирован';
+  const statusBadge = data.verified
+    ? '<div class="result-badge badge-crpt">✅ Честный знак</div>'
+    : '<div class="result-badge badge-err">⚠️ Не верифицирован</div>';
+
+  const name       = data.productName || data.name || '—';
+  const brand      = data.brand || data.producerName || '—';
+  const gtin       = data.gtin || extractGTIN(raw) || '—';
+  const expireDate = data.expireDate || data.expirationDate || '';
+  const country    = data.producerCountry || '';
+
+  let html = `
+    ${statusBadge}
+    <div class="result-row">
+      <div class="lbl">Наименование</div>
+      <div class="val">${name}</div>
+    </div>
+    <div class="divider"></div>
+    <div class="result-row">
+      <div class="lbl">Производитель / бренд</div>
+      <div class="val">${brand}${country ? ' (' + country + ')' : ''}</div>
+    </div>`;
+
+  if (expireDate) html += `
+    <div class="divider"></div>
+    <div class="result-row">
+      <div class="lbl">Срок годности</div>
+      <div class="val">${formatDate(expireDate)}</div>
+    </div>`;
+
+  if (gtin && gtin !== '—') html += `
+    <div class="divider"></div>
+    <div class="result-row">
+      <div class="lbl">GTIN</div>
+      <div class="val" style="font-size:13px;color:var(--sub)">${gtin}</div>
+    </div>`;
+
+  if (ean) html += `
+    <div class="divider"></div>
+    <div class="result-row">
+      <div class="lbl">EAN (для поиска в боте)</div>
+      <div class="val big">${ean}</div>
+    </div>`;
+
+  resultCard.innerHTML = html;
+  scannedEAN = ean || gtin || '';
+
+  sendBtnEl.classList.add('show');
+  rescanBtn.classList.add('show');
+  setStatus(data.verified ? '✅ Товар верифицирован' : '⚠️ Статус не подтверждён',
+            data.verified ? 'ok' : 'err');
+}
+
+function renderHonestSignFallback(raw, gtin, ean) {
+  // API недоступен — показываем сырые данные из кода
+  const short = raw.length > 60 ? raw.substring(0, 60) + '…' : raw;
+  resultCard.innerHTML = `
+    <div class="result-badge badge-err">⚠️ API недоступен</div>
+    <div class="result-row">
+      <div class="lbl">Считанный код (DataMatrix)</div>
+      <div class="val" style="font-size:12px;word-break:break-all;color:var(--sub)">${short}</div>
+    </div>
+    ${gtin ? `<div class="divider"></div>
+    <div class="result-row">
+      <div class="lbl">GTIN из кода</div>
+      <div class="val">${gtin}</div>
+    </div>` : ''}
+    ${ean ? `<div class="divider"></div>
+    <div class="result-row">
+      <div class="lbl">EAN (для поиска в боте)</div>
+      <div class="val big">${ean}</div>
+    </div>` : ''}
+    <div class="result-row" style="margin-top:4px">
+      <div class="val" style="font-size:12px;color:var(--sub)">Сервер Честного знака не ответил. Попробуйте позже или отправьте EAN в бот.</div>
+    </div>`;
+
+  scannedEAN = ean || gtin || '';
+  if (scannedEAN) sendBtnEl.classList.add('show');
+  rescanBtn.classList.add('show');
+  setStatus('⚠️ API Честного знака недоступен', 'err');
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  // YYYYMMDD или ISO
+  if (/^\d{8}$/.test(d)) return `${d.slice(6)}.${d.slice(4,6)}.${d.slice(0,4)}`;
+  try { return new Date(d).toLocaleDateString('ru-RU'); } catch(_) { return d; }
+}
+
+// ── Manual input ──────────────────────────────────────
+function submitManual() {
+  const val = document.getElementById('manual').value.trim();
+  if (!val) return;
+  if (scanActive && scanner) { scanActive = false; scanner.stop().catch(() => {}); }
+
+  if (currentMode === 'crpt') {
+    processHonestSign(val);
+  } else {
+    const ean = val.replace(/\D/g, '');
+    if (ean.length < 8) { setStatus('EAN должен содержать не менее 8 цифр', 'err'); return; }
+    showEANResult(ean);
+  }
+}
+
+// ── Send / copy ───────────────────────────────────────
 function sendToBot() {
   if (!scannedEAN) return;
-
   try { navigator.clipboard.writeText(scannedEAN).catch(() => {}); } catch(_) {}
-
   document.getElementById('success-ean').textContent = scannedEAN;
   document.getElementById('success').classList.add('show');
-
-  setTimeout(() => {
-    window.location.href = 'https://vk.me/club' + VK_GROUP_ID;
-  }, 800);
 }
 
-function copyEAN() {
-  try { navigator.clipboard.writeText(scannedEAN); } catch(_) {}
+function openBot() {
+  window.open('https://vk.me/club' + VK_GROUP_ID, '_blank');
 }
 
-function submitManual() {
-  const val = document.getElementById('manual').value.replace(/\D/g, '');
-  if (val.length < 8) { setStatus('EAN должен содержать не менее 8 цифр', 'err'); return; }
-  if (scanActive && scanner) { scanActive = false; scanner.stop().catch(() => {}); }
-  onEANFound(val);
+function copyAndConfirm() {
+  try {
+    navigator.clipboard.writeText(scannedEAN).then(() => {
+      const btn = document.getElementById('copy-again-btn');
+      btn.textContent = '✅ Скопировано!';
+      setTimeout(() => btn.textContent = '📋 Скопировать ещё раз', 1500);
+    }).catch(() => {});
+  } catch(_) {}
 }
 
+function copyEAN() { copyAndConfirm(); }
+
+// ── Reset ─────────────────────────────────────────────
 function rescan() {
   scannedEAN = '';
+  resultCard.innerHTML = '';
   resultCard.classList.remove('show');
   sendBtnEl.classList.remove('show');
   rescanBtn.classList.remove('show');
