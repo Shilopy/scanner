@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Инструкция — Soudal Sales Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f3ef;
+  --card: #ffffff;
+  --accent: #e8501a;
+  --accent2: #1a3c6e;
+  --text: #1a1917;
+  --sub: #6b6860;
+  --border: #e2dfd8;
+  --green: #2a7a4b;
+  --blue: #1a3c6e;
+  --phone-bg: #1a1917;
+  --phone-screen: #0f0f0f;
+  --msg-out: #1a3c6e;
+  --msg-in: #2a2a2a;
+  --btn: #2b2b2b;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: 'Manrope', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* ── Hero ── */
+.hero {
+  background: var(--accent2);
+  padding: 60px 24px 80px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0px, transparent 18px,
+    rgba(255,255,255,.03) 18px, rgba(255,255,255,.03) 19px
+  );
+}
+.hero-badge {
+  display: inline-block;
+  background: rgba(255,255,255,.12);
+  color: rgba(255,255,255,.85);
+  font-family: 'Unbounded', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.15);
+  margin-bottom: 20px;
+}
+.hero h1 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(24px, 5vw, 40px);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  position: relative;
+}
+.hero h1 span { color: #f4a35a; }
+.hero p {
+  font-size: 16px;
+  color: rgba(255,255,255,.7);
+  max-width: 520px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* ── Layout ── */
+.container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+
+/* ── Section ── */
+.section { padding: 56px 0; }
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+.section-label::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+.section h2 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(20px, 3.5vw, 28px);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 32px;
+}
+
+/* ── Capabilities grid ── */
+.caps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 48px;
+}
+.cap-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  transition: transform .2s, box-shadow .2s;
+}
+.cap-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.cap-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  margin-bottom: 14px;
+}
+.cap-icon.orange { background: #fff0e8; }
+.cap-icon.blue   { background: #e8eef8; }
+.cap-icon.green  { background: #e8f4ee; }
+.cap-icon.purple { background: #f0ecfc; }
+.cap-card h3 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.cap-card p { font-size: 13px; color: var(--sub); line-height: 1.5; }
+
+/* ── Scenario ── */
+.scenario {
+  background: var(--card);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.scenario-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.scenario-num {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.scenario-header h3 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.scenario-header p { font-size: 13px; color: var(--sub); margin-top: 2px; }
+
+/* ── Phone mockup ── */
+.phone-wrap {
+  display: flex;
+  gap: 32px;
+  padding: 28px 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.phone {
+  flex-shrink: 0;
+  width: 200px;
+  background: var(--phone-bg);
+  border-radius: 32px;
+  padding: 14px 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.1);
+  position: relative;
+}
+.phone-notch {
+  width: 60px; height: 10px;
+  background: #000;
+  border-radius: 0 0 8px 8px;
+  margin: 0 auto 10px;
+}
+.phone-screen {
+  background: var(--phone-screen);
+  border-radius: 20px;
+  overflow: hidden;
+  min-height: 340px;
+}
+.chat-header {
+  background: #1c1c1e;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #2a2a2a;
+}
+.chat-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8501a, #1a3c6e);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #fff; font-weight: 700;
+}
+.chat-name { font-size: 11px; font-weight: 600; color: #fff; }
+.chat-status { font-size: 9px; color: #4ade80; }
+.chat-body { padding: 10px 8px; display: flex; flex-direction: column; gap: 6px; }
+.msg {
+  max-width: 85%;
+  padding: 7px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #f0f0f0;
+}
+.msg-out {
+  background: var(--msg-out);
+  align-self: flex-end;
+  border-bottom-right-radius: 3px;
+}
+.msg-in {
+  background: var(--msg-in);
+  align-self: flex-start;
+  border-bottom-left-radius: 3px;
+}
+.msg-in .msg-label { font-size: 8px; color: #888; margin-bottom: 2px; }
+.msg strong { display: block; font-size: 9px; color: #f4a35a; margin-bottom: 1px; }
+.kbd-row {
+  padding: 8px 6px 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.kbd-btn {
+  background: var(--btn);
+  color: #e0e0e0;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kbd-btn.accent { background: #1a3c6e; color: #fff; }
+.kbd-btn.green  { background: #1a5c35; color: #fff; }
+.kbd-btn.red    { background: #5c1a1a; color: #fff; }
+
+/* ── Steps ── */
+.steps-list { display: flex; flex-direction: column; gap: 0; flex: 1; min-width: 200px; }
+.step-item {
+  display: flex;
+  gap: 14px;
+  padding: 12px 0;
+  position: relative;
+}
+.step-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 40px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--border);
+}
+.step-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Unbounded', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: var(--bg);
+  position: relative;
+  z-index: 1;
+}
+.step-content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 3px;
+  color: var(--text);
+}
+.step-content p { font-size: 13px; color: var(--sub); line-height: 1.5; }
+.step-content .tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--green);
+  background: #e8f4ee;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+/* ── Result card preview ── */
+.result-preview {
+  background: #1c1c1e;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+.result-preview .rp-badge {
+  display: inline-block;
+  background: rgba(74,222,128,.15);
+  color: #4ade80;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+.result-preview .rp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 10px;
+}
+.result-preview .rp-row:last-child { border-bottom: none; }
+.result-preview .rp-lbl { color: #888; }
+.result-preview .rp-val { color: #f0f0f0; font-weight: 600; }
+.result-preview .rp-val.art { color: #5b9cf6; font-size: 13px; font-weight: 800; }
+.result-preview .rp-val.ok  { color: #4ade80; }
+.result-preview .rp-val.warn { color: #fb923c; }
+
+/* ── Tips ── */
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.tip-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+.tip-card .tip-icon { font-size: 24px; margin-bottom: 10px; }
+.tip-card h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.tip-card p { font-size: 13px; color: var(--sub); line-height: 1.5; }
+.tip-card code {
+  display: inline-block;
+  background: #f0ede8;
+  color: var(--accent2);
+  font-family: 'Manrope', monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0;
+}
+
+/* ── Footer ── */
+.footer {
+  background: var(--accent2);
+  color: rgba(255,255,255,.6);
+  text-align: center;
+  padding: 32px 24px;
+  font-size: 13px;
+}
+.footer strong { color: #fff; }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .phone-wrap { flex-direction: column; align-items: center; }
+  .phone { width: 180px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">Soudal · Sales Monitor</div>
+  <h1>Ваш помощник<br>по продажам <span>в VK</span></h1>
+  <p>Данные из ERP, остатки на складах и проверка товаров по штрих-коду — прямо в чате</p>
+</div>
+
+<!-- Возможности -->
+<div class="section">
+  <div class="container">
+    <div class="section-label">Возможности</div>
+    <h2>Что умеет бот</h2>
+    <div class="caps-grid">
+      <div class="cap-card">
+        <div class="cap-icon orange">📦</div>
+        <h3>Запас по складам</h3>
+        <p>Актуальные остатки по 4 складам в реальном времени из ERP</p>
+      </div>
+      <div class="cap-card">
+        <div class="cap-icon blue">📊</div>
+        <h3>История продаж</h3>
+        <p>Продажи текущего месяца, прогноз и сравнение с прошлым годом</p>
+      </div>
+      <div class="cap-card">
+        <div class="cap-icon green">🛒</div>
+        <h3>Товар в резерве</h3>
+        <p>Резервы по клиентам и менеджерам с разбивкой по складам</p>
+      </div>
+      <div class="cap-card">
+        <div class="cap-icon purple">📷</div>
+        <h3>Сканер штрих-кода</h3>
+        <p>Наведи камеру — получи полную карточку товара с данными ЧЗ</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Сценарий 1: Запас -->
+<div class="section">
+  <div class="container">
+    <div class="section-label">Сценарий 1</div>
+    <h2>Проверка остатков на складе</h2>
+    <div class="scenario">
+      <div class="scenario-header">
+        <div class="scenario-num">1</div>
+        <div>
+          <h3>Клиент спрашивает наличие товара</h3>
+          <p>Узнайте остатки по всем складам за 10 секунд</p>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="chat-header">
+              <div class="chat-avatar">S</div>
+              <div>
+                <div class="chat-name">Soudal Bot</div>
+                <div class="chat-status">● онлайн</div>
+              </div>
+            </div>
+            <div class="chat-body">
+              <div class="msg msg-in">
+                <div class="msg-label">Бот</div>
+                Выберите действие в меню 👇
+              </div>
+              <div class="msg msg-out">📦 Запас по складам</div>
+              <div class="msg msg-in">
+                Введите название товара или артикул:
+              </div>
+              <div class="msg msg-out">Flex PU40</div>
+              <div class="msg msg-in">
+                <strong>📦 Запасы по складам</strong>
+                🆔 Артикул: 137855<br>
+                📦 Flex PU40 300мл<br>
+                ─────────────<br>
+                🏭 Склад 7200: <span style="color:#4ade80">248 шт</span><br>
+                🏭 Склад 7210: <span style="color:#4ade80">96 шт</span><br>
+                🏭 Склад 7220: <span style="color:#fb923c">12 шт</span><br>
+                🏭 Склад 7230: <span style="color:#4ade80">84 шт</span><br>
+                ─────────────<br>
+                📊 Итого: <b>440 шт</b>
+              </div>
+            </div>
+            <div class="kbd-row">
+              <div class="kbd-btn red">❌ Отмена</div>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h4>Нажмите «📦 Запас по складам»</h4>
+              <p>Кнопка в главном меню бота</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h4>Введите название или артикул</h4>
+              <p>Можно ввести часть названия — бот найдёт все совпадения</p>
+              <span class="tip">✓ Пример: Flex PU40 или 137855</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h4>Получите остатки по всем складам</h4>
+              <p>Данные обновляются каждый час из ERP</p>
+              <span class="tip">✓ Цифра жёлтая = мало, нет цифры = 0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Сценарий 2: Сканер -->
+<div class="section">
+  <div class="container">
+    <div class="section-label">Сценарий 2</div>
+    <h2>Сканирование штрих-кода товара</h2>
+    <div class="scenario">
+      <div class="scenario-header">
+        <div class="scenario-num">2</div>
+        <div>
+          <h3>Сканер EAN + Честный знак</h3>
+          <p>Полная карточка товара по штрих-коду или DataMatrix</p>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="chat-header">
+              <div class="chat-avatar">S</div>
+              <div>
+                <div class="chat-name">Soudal Bot</div>
+                <div class="chat-status">● онлайн</div>
+              </div>
+            </div>
+            <div class="chat-body">
+              <div class="msg msg-out" style="align-self:flex-end">
+                📷 Сканировать штрих-код
+              </div>
+              <div class="msg msg-in" style="width:85%;padding:0;overflow:hidden;background:transparent;border-radius:12px;border:1px solid #333">
+                <div style="background:#1c1c1e;padding:6px 8px;font-size:9px;color:#888">🔗 shilopy.github.io/scanner</div>
+                <div style="background:#111;padding:8px;text-align:center;font-size:9px;color:#5b9cf6">📷 Запустить камеру</div>
+              </div>
+              <div class="msg msg-out">5411183157705</div>
+              <div class="msg msg-in" style="padding:0;overflow:hidden;border-radius:12px;border:1px solid #2a2a2a">
+                <div class="result-preview">
+                  <div class="rp-badge">✅ Честный знак — В обороте</div>
+                  <div class="rp-row"><span class="rp-lbl">🔢 Артикул</span><span class="rp-val art">137855</span></div>
+                  <div class="rp-row"><span class="rp-lbl">📦 Товар</span><span class="rp-val">Flex PU40 (ГЕРМЕТИК)</span></div>
+                  <div class="rp-row"><span class="rp-lbl">🏷️ Бренд</span><span class="rp-val">SOUDAL</span></div>
+                  <div class="rp-row"><span class="rp-lbl">📐 Объём</span><span class="rp-val">300 мл</span></div>
+                  <div class="rp-row"><span class="rp-lbl">⏳ Срок</span><span class="rp-val ok">12.12.2026</span></div>
+                  <div class="rp-row"><span class="rp-lbl">🏭 Склад 7200</span><span class="rp-val ok">248 шт</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="kbd-row">
+              <div class="kbd-btn accent">📦 Запас</div>
+              <div class="kbd-btn green">📷 Сканер</div>
+              <div class="kbd-btn red">❌</div>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h4>Нажмите «📷 Сканировать штрих-код»</h4>
+              <p>Откроется сканер в браузере телефона</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h4>Выберите режим сканирования</h4>
+              <p><b>EAN</b> — линейный штрих-код<br><b>Честный знак</b> — квадратный DataMatrix</p>
+              <span class="tip">✓ Нажмите «Запустить камеру»</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h4>Наведите камеру на код</h4>
+              <p>Телефон завибрирует при считывании. Нажмите «Открыть бот»</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot">4</div>
+            <div class="step-content">
+              <h4>Вставьте код в чат бота</h4>
+              <p>Долгое нажатие в поле сообщения → Вставить → Отправить</p>
+              <span class="tip">✓ Бот покажет запасы по складам</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Сценарий 3: Продажи -->
+<div class="section">
+  <div class="container">
+    <div class="section-label">Сценарий 3</div>
+    <h2>Анализ продаж и резервов</h2>
+    <div class="scenario">
+      <div class="scenario-header">
+        <div class="scenario-num">3</div>
+        <div>
+          <h3>История продаж и товар в резерве</h3>
+          <p>Прогноз на месяц и динамика по сравнению с прошлым годом</p>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="chat-header">
+              <div class="chat-avatar">S</div>
+              <div>
+                <div class="chat-name">Soudal Bot</div>
+                <div class="chat-status">● онлайн</div>
+              </div>
+            </div>
+            <div class="chat-body">
+              <div class="msg msg-out">📊 История продаж</div>
+              <div class="msg msg-in">Введите артикул или название:</div>
+              <div class="msg msg-out">137855</div>
+              <div class="msg msg-in">
+                <strong>📊 История продаж</strong>
+                🆔 Артикул: 137855<br>
+                📅 Март 2026 · 12/21 дн<br>
+                ─────────────<br>
+                Склад 7200<br>
+                Today: <b>186</b> шт<br>
+                Month-1: <b style="color:#4ade80">324</b> шт<br>
+                Month-12: <b>298</b> шт<br>
+                Margin: <b>42%</b><br>
+                ─────────────<br>
+                📈 Рост: <span style="color:#4ade80">+8.7%</span><br>
+                🎯 План: <span style="color:#4ade80">74.2%</span>
+              </div>
+            </div>
+            <div class="kbd-row">
+              <div class="kbd-btn red">❌ Отмена</div>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h4>«📊 История продаж»</h4>
+              <p>Введите артикул или название товара</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h4>Читайте показатели по каждому складу</h4>
+              <p><b>Today</b> — продано в этом месяце<br>
+                 <b>Month-1</b> — прогноз до конца месяца<br>
+                 <b>Month-12</b> — прошлый год аналогичный месяц</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h4>«🛒 Товар в резерве»</h4>
+              <p>Покажет у каких клиентов и менеджеров товар в резерве с разбивкой по складам</p>
+              <span class="tip">✓ Введите «все» для полного списка</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Советы -->
+<div class="section">
+  <div class="container">
+    <div class="section-label">Советы</div>
+    <h2>Полезно знать</h2>
+    <div class="tips-grid">
+      <div class="tip-card">
+        <div class="tip-icon">🔄</div>
+        <h4>Обновление данных</h4>
+        <p>Данные кэшируются на 1 час. Чтобы получить свежие — напишите боту:</p>
+        <code>обновить</code>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">🔍</div>
+        <h4>Поиск по части названия</h4>
+        <p>Не нужно вводить полное название. Достаточно части:</p>
+        <code>Flex PU</code>
+        <code>герметик</code>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">📷</div>
+        <h4>EAN напрямую в чат</h4>
+        <p>Можно ввести EAN-код прямо в любой момент — бот распознает и найдёт товар автоматически</p>
+        <code>5411183157705</code>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">✅</div>
+        <h4>Честный знак</h4>
+        <p>В режиме ЧЗ сканируйте квадратный DataMatrix-код — получите срок годности, дату производства и сертификат</p>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">❌</div>
+        <h4>Кнопка отмены</h4>
+        <p>Если бот ждёт ввода — нажмите «❌ Отмена» чтобы вернуться в главное меню</p>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">🆘</div>
+        <h4>Помощь</h4>
+        <p>Нажмите «🆘 Помощь» в меню бота чтобы увидеть краткое описание всех функций</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <strong>Soudal Sales Monitor</strong> · Только для авторизованных сотрудников<br>
+  Вопросы и доступ — обратитесь к администратору системы
+</div>
+
+</body>
+</html>
