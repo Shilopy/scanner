@@ -345,28 +345,27 @@ async function processHonestSign(raw) {
 }
 
 function showRawJSON(data, raw, ean) {
-  // Показываем все поля которые реально пришли от API
-  const entries = Object.entries(data);
-  let rows = entries.map(([k, v]) => {
-    const val = (v === null || v === undefined) ? '<span style="color:#555">null</span>'
-              : typeof v === 'object' ? `<span style="color:#888;font-size:11px">${JSON.stringify(v).substring(0,80)}</span>`
-              : `<b>${v}</b>`;
-    return `<div class="result-row"><div class="lbl">${k}</div><div class="val" style="font-size:13px">${val}</div></div><div class="divider"></div>`;
-  }).join('');
+  // Рекурсивно разворачиваем все поля включая вложенные объекты
+  function flatRows(obj, prefix) {
+    return Object.entries(obj).map(([k, v]) => {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        return flatRows(v, key).join('');
+      }
+      const display = (v === null || v === undefined) ? '<span style="color:#555">null</span>'
+        : Array.isArray(v) ? `<span style="color:#888;font-size:11px">[array, ${v.length} items]</span>`
+        : `<b style="word-break:break-all">${String(v).substring(0, 120)}</b>`;
+      return `<div class="result-row"><div class="lbl" style="font-size:10px">${key}</div><div class="val" style="font-size:13px">${display}</div></div><div class="divider"></div>`;
+    }).join('');
+  }
 
+  const rows = flatRows(data, '');
   resultCard.innerHTML = `
-    <div class="result-badge badge-crpt">🔍 Ответ API (отладка)</div>
-    <div class="result-row" style="margin-bottom:4px">
-      <div class="lbl">Всего полей: ${entries.length} | EAN извлечён: ${ean || '—'}</div>
-    </div>
+    <div class="result-badge badge-crpt">🔍 Ответ API (все поля)</div>
+    <div class="result-row"><div class="lbl">EAN извлечён: ${ean || '—'}</div></div>
     <div class="divider"></div>
-    ${rows || '<div style="color:var(--sub);padding:8px">Пустой ответ</div>'}
-    <button onclick="renderHonestSignResult(window._lastCrptData, window._lastCrptRaw, window._lastCrptEan)"
-      style="margin-top:8px;padding:8px 14px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-size:13px;cursor:pointer">
-      Показать в обычном виде
-    </button>`;
+    ${rows || '<div style="color:var(--sub);padding:8px">Пустой ответ</div>'}`;
 
-  // Сохраняем для кнопки "обычный вид"
   window._lastCrptData = data;
   window._lastCrptRaw  = raw;
   window._lastCrptEan  = ean;
@@ -374,7 +373,7 @@ function showRawJSON(data, raw, ean) {
   scannedEAN = ean || '';
   if (scannedEAN) sendBtnEl.classList.add('show');
   rescanBtn.classList.add('show');
-  setStatus(`✅ API ответил: ${entries.length} полей`, 'ok');
+  setStatus('✅ Все поля API развёрнуты', 'ok');
 }
 
 function extractGTIN(raw) {
@@ -534,4 +533,3 @@ document.getElementById('manual').addEventListener('keydown', e => {
 });
 </script>
 </body>
-</html>
