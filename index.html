@@ -345,16 +345,41 @@ async function processHonestSign(raw) {
 }
 
 function showRawJSON(data, raw, ean) {
-  // Рекурсивно разворачиваем все поля включая вложенные объекты
+  // Пробуем распарсить строки как JSON (API возвращает некоторые поля как строки)
+  function tryParse(v) {
+    if (typeof v !== 'string') return v;
+    try { return JSON.parse(v); } catch(_) { return v; }
+  }
+
+  // Рекурсивно разворачиваем все поля, парсим строки-JSON
   function flatRows(obj, prefix) {
+    if (!obj || typeof obj !== 'object') return '';
     return Object.entries(obj).map(([k, v]) => {
       const key = prefix ? `${prefix}.${k}` : k;
-      if (v && typeof v === 'object' && !Array.isArray(v)) {
-        return flatRows(v, key).join('');
+      const parsed = tryParse(v);
+
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        // вложенный объект — рекурсия
+        return `<div class="result-row"><div class="lbl" style="font-size:10px;color:var(--blue)">${key} ▼</div></div>`
+             + flatRows(parsed, key);
       }
-      const display = (v === null || v === undefined) ? '<span style="color:#555">null</span>'
-        : Array.isArray(v) ? `<span style="color:#888;font-size:11px">[array, ${v.length} items]</span>`
-        : `<b style="word-break:break-all">${String(v).substring(0, 120)}</b>`;
+      if (Array.isArray(parsed)) {
+        // массив — разворачиваем первые 3 элемента
+        let arrHtml = `<div class="result-row"><div class="lbl" style="font-size:10px;color:var(--purple)">${key} [${parsed.length}] ▼</div></div>`;
+        parsed.slice(0, 3).forEach((item, i) => {
+          const parsedItem = tryParse(item);
+          if (parsedItem && typeof parsedItem === 'object') {
+            arrHtml += flatRows(parsedItem, `${key}[${i}]`);
+          } else {
+            arrHtml += `<div class="result-row"><div class="lbl" style="font-size:10px">${key}[${i}]</div><div class="val" style="font-size:12px"><b>${String(parsedItem).substring(0,120)}</b></div></div><div class="divider"></div>`;
+          }
+        });
+        return arrHtml;
+      }
+
+      const display = (parsed === null || parsed === undefined)
+        ? '<span style="color:#555">null</span>'
+        : `<b style="word-break:break-all">${String(parsed).substring(0, 200)}</b>`;
       return `<div class="result-row"><div class="lbl" style="font-size:10px">${key}</div><div class="val" style="font-size:13px">${display}</div></div><div class="divider"></div>`;
     }).join('');
   }
@@ -362,7 +387,7 @@ function showRawJSON(data, raw, ean) {
   const rows = flatRows(data, '');
   resultCard.innerHTML = `
     <div class="result-badge badge-crpt">🔍 Ответ API (все поля)</div>
-    <div class="result-row"><div class="lbl">EAN извлечён: ${ean || '—'}</div></div>
+    <div class="result-row"><div class="lbl">EAN из кода: ${ean || '—'}</div></div>
     <div class="divider"></div>
     ${rows || '<div style="color:var(--sub);padding:8px">Пустой ответ</div>'}`;
 
@@ -373,7 +398,7 @@ function showRawJSON(data, raw, ean) {
   scannedEAN = ean || '';
   if (scannedEAN) sendBtnEl.classList.add('show');
   rescanBtn.classList.add('show');
-  setStatus('✅ Все поля API развёрнуты', 'ok');
+  setStatus('✅ Все поля развёрнуты', 'ok');
 }
 
 function extractGTIN(raw) {
@@ -533,3 +558,4 @@ document.getElementById('manual').addEventListener('keydown', e => {
 });
 </script>
 </body>
+</html>
