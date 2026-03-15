@@ -3,164 +3,179 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Сканер штрих-кода — Soudal</title>
-<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<title>Сканер штрих-кода</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --blue: #5b9cf6; --purple: #a78bfa; --green: #4ade80; --red: #f87171;
-  --bg: #0a0a0a; --card: #1c1c1e; --border: #2c2c2e;
+  --bg: #0a0a0a; --card: #1c1c1e; --border: #333;
   --text: #f0f0f0; --sub: #888;
 }
-html, body { height: 100%; background: var(--bg); color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow: hidden; }
-.app { display: flex; flex-direction: column; height: 100dvh; }
-.header { padding: 14px 18px 8px; text-align: center; flex-shrink: 0; }
-.header h1 { font-size: 17px; font-weight: 700; }
-.header p  { font-size: 12px; color: var(--sub); margin-top: 3px; }
-.viewfinder { flex: 1; min-height: 0; position: relative; background: #000; overflow: hidden; }
-#video { width: 100%; height: 100%; object-fit: cover; display: block; }
-.overlay { position: absolute; inset: 0; pointer-events: none; }
-.overlay svg { width: 100%; height: 100%; }
-.beam {
-  position: absolute;
-  left: calc(50% - min(36vw, 140px)); width: min(72vw, 280px); height: 2px;
-  background: linear-gradient(90deg, transparent, var(--blue) 40%, var(--purple) 60%, transparent);
-  border-radius: 2px; animation: beam 2s ease-in-out infinite; pointer-events: none;
+html, body {
+  height: 100%; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow-x: hidden;
 }
-@keyframes beam {
-  0%   { top: calc(50% - min(15vw, 60px) + 4px); opacity: 0; }
-  10%  { opacity: 1; } 90% { opacity: 1; }
-  100% { top: calc(50% + min(15vw, 60px) - 4px); opacity: 0; }
+.header { padding: 16px 18px 10px; text-align: center; }
+.header h1 { font-size: 18px; font-weight: 700; }
+.header p  { font-size: 13px; color: var(--sub); margin-top: 4px; }
+
+/* scanner container — html5-qrcode рендерит видео сюда */
+#reader {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
 }
-.corners { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-.corner-box { width: min(72vw, 280px); height: min(30vw, 116px); position: relative; }
-.corner-box span { position: absolute; width: 20px; height: 20px; border-color: var(--blue); border-style: solid; }
-.corner-box span:nth-child(1) { top:0; left:0; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
-.corner-box span:nth-child(2) { top:0; right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
-.corner-box span:nth-child(3) { bottom:0; left:0; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
-.corner-box span:nth-child(4) { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
-.cam-hint { position: absolute; bottom: 12px; left:0; right:0; text-align: center; font-size: 12px; color: rgba(255,255,255,.5); pointer-events: none; }
-.bottom { flex-shrink: 0; padding: 12px 18px 22px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
-#status { text-align: center; font-size: 13px; color: var(--sub); min-height: 17px; transition: color .2s; }
+/* убираем лишние элементы которые html5-qrcode добавляет */
+#reader__dashboard_section_swaplink { display: none !important; }
+#reader__status_span { display: none !important; }
+#reader__header_message { display: none !important; }
+#reader img { display: none; }
+#reader select {
+  background: var(--card); color: var(--text);
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; font-size: 13px; margin: 6px auto; display: block;
+}
+
+.bottom {
+  padding: 14px 18px 28px;
+  display: flex; flex-direction: column; gap: 10px;
+  max-width: 480px; margin: 0 auto;
+}
+#status {
+  text-align: center; font-size: 13px; color: var(--sub);
+  min-height: 18px; transition: color .2s;
+}
 #status.ok  { color: var(--green); }
 #status.err { color: var(--red); }
+
 .row { display: flex; gap: 8px; }
 input[type=number] {
-  flex: 1; padding: 11px 13px; background: var(--card); border: 1.5px solid var(--border);
-  border-radius: 10px; color: var(--text); font-size: 15px; outline: none;
+  flex: 1; padding: 12px 14px; background: var(--card);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  color: var(--text); font-size: 15px; outline: none;
   -webkit-appearance: none; -moz-appearance: textfield;
 }
 input[type=number]:focus { border-color: var(--blue); }
 input[type=number]::placeholder { color: #444; }
-input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; }
-.btn { padding: 11px 16px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: opacity .15s, transform .1s; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
-.btn:active { opacity: .7; transform: scale(.97); }
-.btn-gray { background: var(--card); color: #ccc; }
-#result-card { display: none; background: var(--card); border: 1.5px solid var(--border);
-  border-radius: 12px; padding: 13px 15px; gap: 4px; flex-direction: column; }
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.btn {
+  padding: 12px 18px; border-radius: 10px; border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .15s;
+}
+.btn:active { opacity: .7; }
+.btn-gray  { background: var(--card); color: #ccc; }
+.btn-start { background: var(--blue); color: #fff; width: 100%; padding: 13px; font-size: 15px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+#result-card {
+  display: none; background: var(--card);
+  border: 1.5px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; flex-direction: column; gap: 5px;
+}
 #result-card.show { display: flex; }
 #result-card .lbl { font-size: 11px; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; }
-#result-card .val { font-size: 24px; font-weight: 800; color: var(--blue); letter-spacing: 1.5px; }
-#result-card .note { font-size: 12px; color: var(--sub); margin-top: 2px; }
-#send-btn { display: none; width: 100%; padding: 14px; border-radius: 12px; border: none;
-  background: linear-gradient(135deg, var(--blue), var(--purple)); color: #fff;
-  font-size: 16px; font-weight: 700; cursor: pointer;
-  transition: opacity .15s, transform .1s; -webkit-tap-highlight-color: transparent; }
+#result-card .val { font-size: 26px; font-weight: 800; color: var(--blue); letter-spacing: 2px; }
+#result-card .note { font-size: 12px; color: var(--sub); }
+
+#send-btn {
+  display: none; width: 100%; padding: 14px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: opacity .15s;
+}
 #send-btn.show { display: block; }
-#send-btn:active { opacity: .8; transform: scale(.98); }
-#success { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 99;
+#send-btn:active { opacity: .8; }
+
+#rescan-btn {
+  display: none; width: 100%; padding: 12px; border-radius: 12px; border: none;
+  background: var(--card); color: var(--text);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#rescan-btn.show { display: block; }
+
+/* success overlay */
+#success {
+  display: none; position: fixed; inset: 0; background: var(--bg); z-index: 99;
   flex-direction: column; align-items: center; justify-content: center;
-  gap: 14px; text-align: center; padding: 32px; }
+  gap: 16px; text-align: center; padding: 32px;
+}
 #success.show { display: flex; }
-#success .icon { font-size: 72px; animation: pop .4s cubic-bezier(.18,.89,.32,1.28); }
+#success .icon  { font-size: 72px; animation: pop .4s cubic-bezier(.18,.89,.32,1.28); }
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 #success .title { font-size: 22px; font-weight: 800; }
-#success .sub   { font-size: 14px; color: var(--sub); max-width: 260px; line-height: 1.6; }
-#success .ean-copy { font-size: 20px; font-weight: 800; color: var(--blue); letter-spacing: 1.5px; padding: 10px 20px; background: var(--card); border-radius: 10px; cursor: pointer; }
-#success .hint { font-size: 13px; color: var(--sub); }
-.scan-again { margin-top: 6px; padding: 12px 28px; border-radius: 10px; border: none;
+#success .ean   { font-size: 24px; font-weight: 800; color: var(--blue); letter-spacing: 2px;
+  background: var(--card); padding: 10px 22px; border-radius: 10px; cursor: pointer; }
+#success .sub   { font-size: 14px; color: var(--sub); max-width: 280px; line-height: 1.6; }
+#success .hint  { font-size: 13px; color: var(--sub); background: var(--card);
+  padding: 10px 14px; border-radius: 10px; max-width: 300px; line-height: 1.5; }
+.again-btn { padding: 12px 28px; border-radius: 10px; border: none;
   background: var(--card); color: var(--text); font-size: 15px; font-weight: 600;
-  cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  cursor: pointer; -webkit-tap-highlight-color: transparent; margin-top: 4px; }
 </style>
 </head>
 <body>
 
-<div class="app">
-  <div class="header">
-    <h1>📷 Сканер штрих-кода</h1>
-    <p>Наведите камеру на штрих-код товара</p>
-  </div>
-
-  <div class="viewfinder">
-    <video id="video" autoplay muted playsinline></video>
-    <div class="overlay">
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <mask id="cut">
-            <rect width="100" height="100" fill="white"/>
-            <rect x="14" y="35" width="72" height="30" rx="2" fill="black"/>
-          </mask>
-        </defs>
-        <rect width="100" height="100" fill="rgba(0,0,0,0.48)" mask="url(#cut)"/>
-      </svg>
-    </div>
-    <div class="beam" id="beam"></div>
-    <div class="corners">
-      <div class="corner-box">
-        <span></span><span></span><span></span><span></span>
-      </div>
-    </div>
-    <div class="cam-hint" id="cam-hint">Держите камеру ровно над штрих-кодом</div>
-  </div>
-
-  <div class="bottom">
-    <div id="status">Запуск камеры…</div>
-    <div class="row">
-      <input id="manual" type="number" inputmode="numeric" placeholder="Или введите EAN вручную">
-      <button class="btn btn-gray" onclick="submitManual()">Найти</button>
-    </div>
-    <div id="result-card">
-      <div class="lbl">Считан штрих-код (EAN)</div>
-      <div class="val" id="ean-val"></div>
-      <div class="note">Нажмите кнопку ниже — бот откроется с кодом</div>
-    </div>
-    <button id="send-btn" onclick="sendToBot()">📲 Открыть бот с результатом</button>
-  </div>
+<div class="header">
+  <h1>📷 Сканер штрих-кода</h1>
+  <p>Наведите камеру на штрих-код товара</p>
 </div>
 
-<!-- Success screen -->
+<div id="reader"></div>
+
+<div class="bottom">
+  <div id="status">Нажмите кнопку для запуска камеры</div>
+
+  <button class="btn-start" id="start-btn" onclick="startScanner()">
+    📷 Запустить камеру
+  </button>
+
+  <div class="row">
+    <input id="manual" type="number" inputmode="numeric" placeholder="Или введите EAN вручную">
+    <button class="btn btn-gray" onclick="submitManual()">Найти</button>
+  </div>
+
+  <div id="result-card">
+    <div class="lbl">Считан штрих-код (EAN)</div>
+    <div class="val" id="ean-val"></div>
+    <div class="note">Нажмите кнопку ниже — откроется чат с ботом</div>
+  </div>
+
+  <button id="send-btn" onclick="sendToBot()">📲 Открыть бот с результатом</button>
+  <button id="rescan-btn" onclick="rescan()">🔄 Сканировать ещё раз</button>
+</div>
+
+<!-- Success -->
 <div id="success">
   <div class="icon">✅</div>
   <div class="title">Код скопирован!</div>
-  <div class="ean-copy" id="success-ean" onclick="copyEAN()"></div>
-  <div class="sub">Бот открывается. Вставьте код в поле сообщения и нажмите «Отправить».</div>
-  <div class="hint">💡 Код уже в буфере обмена — просто вставьте (долгое нажатие → Вставить)</div>
-  <button class="scan-again" onclick="resetScanner()">🔄 Сканировать ещё</button>
+  <div class="ean" id="success-ean" onclick="copyEAN()"></div>
+  <div class="sub">Сейчас откроется чат с ботом.</div>
+  <div class="hint">💡 Код уже в буфере обмена.<br>Вставьте в поле сообщения (долгое нажатие → Вставить) и отправьте.</div>
+  <button class="again-btn" onclick="resetAll()">🔄 Сканировать ещё</button>
 </div>
 
 <script>
-// ══════════════════════════════════════════
-//  НАСТРОЙКА
-//  Замените YOUR_GROUP_ID на числовой ID
-//  вашей группы/сообщества VK.
-//  Пример: 123456789  (из адреса vk.com/club123456789)
-// ══════════════════════════════════════════
 const VK_GROUP_ID = '236652808';
-// ══════════════════════════════════════════
 
+let scanner    = null;
 let scannedEAN = '';
-let scanning   = false;
-let codeReader = null;
-let lastScan   = 0;
+let scanActive = false;
 
-const videoEl    = document.getElementById('video');
 const statusEl   = document.getElementById('status');
+const startBtn   = document.getElementById('start-btn');
 const resultCard = document.getElementById('result-card');
 const eanValEl   = document.getElementById('ean-val');
 const sendBtnEl  = document.getElementById('send-btn');
+const rescanBtn  = document.getElementById('rescan-btn');
 
 function setStatus(msg, cls = '') {
   statusEl.textContent = msg;
@@ -168,47 +183,61 @@ function setStatus(msg, cls = '') {
 }
 
 async function startScanner() {
+  startBtn.style.display = 'none';
+  setStatus('Запрашиваю доступ к камере…');
+
   try {
-    codeReader = new ZXing.BrowserMultiFormatReader(null, { delayBetweenScanAttempts: 150 });
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    scanner = new Html5Qrcode('reader');
 
-    if (!devices.length) {
-      setStatus('Камера не найдена. Введите EAN вручную.', 'err');
-      hideCamUI(); return;
-    }
+    const config = {
+      fps: 15,
+      qrbox: { width: 260, height: 100 },
+      aspectRatio: 1.5,
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.ITF,
+      ],
+    };
 
-    const cam = devices.find(d => /back|rear|environment/i.test(d.label))
-              || devices[devices.length - 1];
+    await scanner.start(
+      { facingMode: 'environment' },
+      config,
+      onScanSuccess,
+      () => {} // ignore scan errors (frame without barcode)
+    );
 
+    scanActive = true;
     setStatus('Наведите камеру на штрих-код…');
-    scanning = true;
-
-    await codeReader.decodeFromVideoDevice(cam.deviceId, videoEl, (result) => {
-      if (!scanning || !result) return;
-      const now = Date.now();
-      if (now - lastScan < 800) return;
-      lastScan = now;
-
-      const ean = result.getText().replace(/\D/g, '');
-      if (ean.length < 8) return;
-
-      scanning = false;
-      try { codeReader.reset(); } catch(_) {}
-      onEANFound(ean);
-    });
 
   } catch(e) {
-    const msg = e.name === 'NotAllowedError'
-      ? 'Доступ к камере запрещён. Введите EAN вручную.'
-      : 'Камера недоступна. Введите EAN вручную.';
-    setStatus(msg, 'err');
-    hideCamUI();
+    console.error('Camera error:', e);
+    startBtn.style.display = 'block';
+
+    if (e.toString().includes('NotAllowedError') || e.toString().includes('Permission')) {
+      setStatus('⛔ Доступ к камере запрещён. Разрешите в настройках браузера или введите EAN вручную.', 'err');
+    } else if (e.toString().includes('NotFoundError')) {
+      setStatus('📵 Камера не найдена. Введите EAN вручную.', 'err');
+    } else {
+      setStatus('❌ Не удалось запустить камеру. Введите EAN вручную.', 'err');
+    }
   }
 }
 
-function hideCamUI() {
-  document.getElementById('cam-hint').style.display = 'none';
-  document.getElementById('beam').style.display = 'none';
+function onScanSuccess(decodedText) {
+  if (!scanActive) return;
+  const ean = decodedText.replace(/\D/g, '');
+  if (ean.length < 8) return;
+
+  scanActive = false;
+  scanner.stop().catch(() => {});
+
+  try { navigator.vibrate?.(120); } catch(_) {}
+  onEANFound(ean);
 }
 
 function onEANFound(ean) {
@@ -216,56 +245,52 @@ function onEANFound(ean) {
   eanValEl.textContent = ean;
   resultCard.classList.add('show');
   sendBtnEl.classList.add('show');
+  rescanBtn.classList.add('show');
   setStatus('✅ Штрих-код считан!', 'ok');
-  document.getElementById('cam-hint').style.display = 'none';
-  try { navigator.vibrate?.(100); } catch(_) {}
+}
+
+function sendToBot() {
+  if (!scannedEAN) return;
+
+  try { navigator.clipboard.writeText(scannedEAN).catch(() => {}); } catch(_) {}
+
+  document.getElementById('success-ean').textContent = scannedEAN;
+  document.getElementById('success').classList.add('show');
+
+  setTimeout(() => {
+    window.location.href = 'https://vk.me/club' + VK_GROUP_ID;
+  }, 800);
 }
 
 function copyEAN() {
   try { navigator.clipboard.writeText(scannedEAN); } catch(_) {}
 }
 
-function sendToBot() {
-  if (!scannedEAN) return;
-
-  // Копируем EAN в буфер обмена
-  try { navigator.clipboard.writeText(scannedEAN).catch(() => {}); } catch(_) {}
-
-  // Показываем success-экран с кодом
-  document.getElementById('success-ean').textContent = scannedEAN;
-  document.getElementById('success').classList.add('show');
-
-  // Через 700мс открываем чат с ботом
-  // vk.me/clubXXXXX — универсальная ссылка, открывает диалог в приложении VK
-  setTimeout(() => {
-    window.location.href = 'https://vk.me/club' + VK_GROUP_ID;
-  }, 700);
-}
-
 function submitManual() {
   const val = document.getElementById('manual').value.replace(/\D/g, '');
   if (val.length < 8) { setStatus('EAN должен содержать не менее 8 цифр', 'err'); return; }
-  if (scanning && codeReader) { scanning = false; try { codeReader.reset(); } catch(_) {} }
+  if (scanActive && scanner) { scanActive = false; scanner.stop().catch(() => {}); }
   onEANFound(val);
 }
 
-function resetScanner() {
-  scannedEAN = ''; scanning = false; lastScan = 0;
+function rescan() {
+  scannedEAN = '';
   resultCard.classList.remove('show');
   sendBtnEl.classList.remove('show');
-  document.getElementById('success').classList.remove('show');
+  rescanBtn.classList.remove('show');
   document.getElementById('manual').value = '';
-  document.getElementById('cam-hint').style.display = '';
-  document.getElementById('beam').style.display = '';
-  setStatus('Наведите камеру на штрих-код…');
-  startScanner();
+  setStatus('');
+  startBtn.style.display = 'block';
+}
+
+function resetAll() {
+  document.getElementById('success').classList.remove('show');
+  rescan();
 }
 
 document.getElementById('manual').addEventListener('keydown', e => {
   if (e.key === 'Enter') submitManual();
 });
-
-startScanner();
 </script>
 </body>
 </html>
