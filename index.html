@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Сканер — Soudal</title>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -227,6 +227,28 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 const VK_GROUP_ID = '236652808';
 // ══════════════════════════════════
 
+// XSS защита — экранируем все данные из API перед вставкой в HTML
+function esc(str) {
+  if (!str && str !== 0) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+// Fetch с таймаутом (8 секунд)
+async function fetchWithTimeout(url, options = {}, ms = 8000) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: ctrl.signal });
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
 let scanner    = null;
 let scanActive = false;
 let scannedEAN = '';       // код для отправки в бот
@@ -394,20 +416,25 @@ async function processHonestSign(raw) {
     const encoded = encodeURIComponent(raw);
     const url = `https://mobile.api.crpt.ru/mobile/check?code=${encoded}`;
 
-    const resp = await fetch(url, {
+    const resp = await fetchWithTimeout(url, {
       headers: { 'Accept': 'application/json' }
-    });
+    }, 8000);
 
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const text = await resp.text();
-    window._rawApiText = text;  // сохраняем сырой текст
+    window._rawApiText = text;
     const data = JSON.parse(text);
 
     renderHonestSignResult(data, raw, eanFromGtin || gtin);
 
   } catch(e) {
     console.error('Честный знак API:', e);
-    renderHonestSignFallback(raw, gtin, eanFromGtin);
+    if (e.name === 'AbortError') {
+      setStatus('⏱️ API не ответил за 8 сек. Введите EAN вручную.', 'err');
+      rescanBtn.classList.add('show');
+    } else {
+      renderHonestSignFallback(raw, gtin, eanFromGtin);
+    }
   }
 }
 
@@ -490,39 +517,46 @@ function renderHonestSignResult(data, raw, ean) {
       <div class="val big">${supplierArt}</div>
     </div>`;
 
-  html += row('📦 Наименование', name + (kind ? ` (${kind})` : ''));
-  html += row('🏷️ Бренд', brand);
-  html += row('🏭 Производитель', producer);
-  html += row('🌍 Страна производства', country);
-  html += row('📐 Объём / вес', volume);
+  html += row('📦 Наименование', esc(name) + (kind ? ' (' + esc(kind) + ')' : ''));
+  html += row('🏷️ Бренд',              esc(brand));
+  html += row('🏭 Производитель',       esc(producer));
+  html += row('🌍 Страна производства', esc(country));
+  html += row('📐 Объём / вес',         esc(volume));
 
   // Срок годности — красный если < 90 дней
   if (expire) {
     const expColor = isExpiringSoon(expire) ? 'var(--red)' : 'var(--green)';
-    html += row('⏳ Срок годности', `<span style="color:${expColor};font-weight:700">${formatDate(expire)}</span>`);
+    const expStr   = formatDate(expire);
+    if (expStr) html += row('⏳ Срок годности',
+      '<span style="color:' + expColor + ';font-weight:700">' + esc(expStr) + '</span>');
   }
 
-  // Даты из timestamp
-  const prodStr = producedMs ? formatTs(producedMs) : '';
-  const intrStr = introducedMs ? formatTs(introducedMs) : '';
-  html += row('🏗️ Дата производства',   prodStr);
-  html += row('📅 Дата ввода в оборот', intrStr);
+  // Даты из timestamp (миллисекунды → читаемая дата)
+  if (producedMs) {
+    const prodStr = formatTs(producedMs);
+    if (prodStr) html += row('🏗️ Дата производства', esc(prodStr));
+  }
+  if (introducedMs) {
+    const intrStr = formatTs(introducedMs);
+    if (intrStr) html += row('📅 Дата ввода в оборот', esc(intrStr));
+  }
 
   // Упаковка
   const packStr = [packType, packMat].filter(Boolean).join(' / ');
-  html += row('📦 Упаковка', packStr);
-  if (boxQty) html += row('📦 Короб', `${boxQty} шт${boxGtin ? ' · GTIN: ' + boxGtin : ''}`);
+  if (packStr) html += row('📦 Упаковка', esc(packStr));
+  if (boxQty)  html += row('📦 Короб',
+    esc(String(boxQty)) + ' шт' + (boxGtin ? ' · GTIN: ' + esc(boxGtin) : ''));
 
-  // Сертификат
-  if (cert) {
+  // Сертификат / СГР
+  if (cert && cert.number) {
     const certTypeMap = { STATE_REGISTRATION_CERTIFICATE: 'СГР', DECLARATION: 'Декларация', CERTIFICATE: 'Сертификат' };
-    const certType = certTypeMap[cert.certDocType] || cert.certDocType || 'Документ';
-    html += row(`📄 ${certType}`, cert.number);
+    const certType = esc(certTypeMap[cert.certDocType] || cert.certDocType || 'Документ');
+    html += row('📄 ' + certType, esc(cert.number));
   }
 
-  html += row('📋 ТНВЭД', tnvd);
-  html += row('📜 ТУ / ГОСТ', tuDoc);
-  html += row('🔢 EAN / GTIN', gtin);
+  html += row('📋 ТНВЭД',    esc(tnvd));
+  html += row('📜 ТУ / ГОСТ', esc(tuDoc));
+  html += row('🔢 EAN / GTIN', esc(gtin));
 
   resultCard.innerHTML = html;
 
