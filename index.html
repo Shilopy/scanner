@@ -345,84 +345,7 @@ async function processHonestSign(raw) {
   }
 }
 
-function showRawJSON(data, raw, ean) {
-  // Пробуем распарсить строки как JSON (API возвращает некоторые поля как строки)
-  function tryParse(v) {
-    if (typeof v !== 'string') return v;
-    try { return JSON.parse(v); } catch(_) { return v; }
-  }
 
-  // Рекурсивно разворачиваем все поля, парсим строки-JSON
-  function flatRows(obj, prefix) {
-    if (!obj || typeof obj !== 'object') return '';
-    return Object.entries(obj).map(([k, v]) => {
-      const key = prefix ? `${prefix}.${k}` : k;
-      const parsed = tryParse(v);
-
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        // вложенный объект — рекурсия
-        return `<div class="result-row"><div class="lbl" style="font-size:10px;color:var(--blue)">${key} ▼</div></div>`
-             + flatRows(parsed, key);
-      }
-      if (Array.isArray(parsed)) {
-        // массив — разворачиваем первые 3 элемента
-        let arrHtml = `<div class="result-row"><div class="lbl" style="font-size:10px;color:var(--purple)">${key} [${parsed.length}] ▼</div></div>`;
-        parsed.slice(0, 3).forEach((item, i) => {
-          const parsedItem = tryParse(item);
-          if (parsedItem && typeof parsedItem === 'object') {
-            arrHtml += flatRows(parsedItem, `${key}[${i}]`);
-          } else {
-            arrHtml += `<div class="result-row"><div class="lbl" style="font-size:10px">${key}[${i}]</div><div class="val" style="font-size:12px"><b>${String(parsedItem).substring(0,120)}</b></div></div><div class="divider"></div>`;
-          }
-        });
-        return arrHtml;
-      }
-
-      const display = (parsed === null || parsed === undefined)
-        ? '<span style="color:#555">null</span>'
-        : `<b style="word-break:break-all">${String(parsed).substring(0, 200)}</b>`;
-      return `<div class="result-row"><div class="lbl" style="font-size:10px">${key}</div><div class="val" style="font-size:13px">${display}</div></div><div class="divider"></div>`;
-    }).join('');
-  }
-
-  // Сохраняем JSON глобально для копирования
-  window._lastCrptData = data;
-  window._lastCrptRaw  = raw;
-  window._lastCrptEan  = ean;
-  window._lastCrptJSON = JSON.stringify(data, null, 2);
-
-  const rows = flatRows(data, '');
-  resultCard.innerHTML = `
-    <div class="result-badge badge-crpt">🔍 Ответ API</div>
-    <div class="result-row"><div class="lbl">EAN из кода: ${ean || '—'}</div></div>
-    <button id="copy-json-btn" style="padding:10px 14px;border-radius:8px;border:1.5px solid var(--blue);background:transparent;color:var(--blue);font-size:14px;font-weight:700;cursor:pointer;margin:4px 0;width:100%">
-      📋 Скопировать JSON для отладки
-    </button>
-    <div class="divider"></div>
-    ${rows || '<div style="color:var(--sub);padding:8px">Пустой ответ</div>'}`;
-
-  // Вешаем обработчик ПОСЛЕ вставки в DOM
-  setTimeout(() => {
-    const btn = document.getElementById('copy-json-btn');
-    if (btn) btn.addEventListener('click', copyFullJSON);
-  }, 100);
-
-  scannedEAN = ean || '';
-  if (scannedEAN) sendBtnEl.classList.add('show');
-  rescanBtn.classList.add('show');
-  setStatus('✅ Нажмите кнопку чтобы скопировать JSON', 'ok');
-}
-
-function copyFullJSON() {
-  const text = window._lastCrptJSON || JSON.stringify(window._lastCrptData, null, 2);
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.getElementById('copy-json-btn');
-    if (btn) { btn.textContent = '✅ JSON скопирован! Вставьте разработчику.'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)'; }
-  }).catch(() => {
-    // fallback — показываем JSON в prompt чтобы вручную скопировать
-    prompt('Скопируйте JSON:', window._lastCrptJSON);
-  });
-}
 
 function extractGTIN(raw) {
   // DataMatrix Честного знака: начинается с 01XXXXXXXXXXXXXXXX...
@@ -431,70 +354,65 @@ function extractGTIN(raw) {
 }
 
 function renderHonestSignResult(data, raw, ean) {
-  const cd  = data.constructionData || {};
-  const cr  = data.codeResolveData  || {};
-  const cat = (data.catalogData && data.catalogData[0]) || {};
+  const cd    = data.constructionData || {};
+  const cr    = data.codeResolveData  || {};
+  const cat   = (data.catalogData && data.catalogData[0]) || {};
   const attrs = cat.good_attrs || [];
 
-  // ── Из constructionData ──
-  const name        = cd.productName    || data.productName || '—';
-  const brand       = cd.brand          || '—';
-  const importer    = cd.importerName   || '—';
-  const country     = cd.country        || '';
-  const expire      = cd.expirationDate || '';
-  const tnvd        = cd.tnvd           || '';
-  const volume      = cd.volumeWeight   || '';
-  const kind        = cd.productKind    || '';
-  const rawStatus   = cd.status         || '';
-  const producedMs  = cd.producedDate   || null;
-  const introducedMs = cd.introducedDate || null;
-  const cert        = cd.certDoc        || (cd.certDocList && cd.certDocList[0]) || null;
-  const gtin        = (cd.gtin || cr.gtin || extractGTIN(raw) || '').replace(/^0+/, '');
+  // ── constructionData ──
+  const name         = cd.productName    || data.productName || '—';
+  const brand        = cd.brand          || '—';
+  const country      = cd.country        || '';
+  const volume       = cd.volumeWeight   || '';
+  const kind         = cd.productKind    || '';
+  const tnvd         = cd.tnvd           || '';
+  const rawStatus    = cd.status         || '';
+  const cert         = cd.certDoc        || (cd.certDocList && cd.certDocList[0]) || null;
+  const gtin         = (cd.gtin || cr.gtin || extractGTIN(raw) || '').replace(/^0+/, '');
 
-  // ── Из catalogData ──
-  const producer    = cat.producer_name || '';
-  const goodUrl     = cat.good_url      || '';
+  // Даты — timestamp в миллисекундах
+  const producedMs   = cd.producedDate   ? Number(cd.producedDate)   : null;
+  const introducedMs = cd.introducedDate ? Number(cd.introducedDate) : null;
+  // Срок годности — строка ISO
+  const expire       = cd.expirationDate || '';
 
-  // Артикул поставщика (attr_id 13797)
-  const artAttr     = attrs.find(a => a.attr_id === 13797);
+  // ── catalogData ──
+  const producer  = cat.producer_name || '';
+  const artAttr   = attrs.find(a => a.attr_id === 13797);
   const supplierArt = artAttr ? artAttr.attr_value : '';
-
-  // ТУ/ГОСТ (attr_id 4404)
-  const tuAttr      = attrs.find(a => a.attr_id === 4404);
-  const tuDoc       = tuAttr ? `${tuAttr.attr_value_type || ''} ${tuAttr.attr_value}`.trim() : '';
-
-  // Упаковка unit (attr_id 2710, level trade-unit)
-  const packAttr    = attrs.find(a => a.attr_id === 2710 && a.level === 'trade-unit');
-  const packType    = packAttr ? packAttr.attr_value : '';
+  const tuAttr    = attrs.find(a => a.attr_id === 4404);
+  const tuDoc     = tuAttr ? `${tuAttr.attr_value_type || ''} ${tuAttr.attr_value}`.trim() : '';
+  const packAttr  = attrs.find(a => a.attr_id === 2710 && a.level === 'trade-unit');
+  const packType  = packAttr ? packAttr.attr_value : '';
   const packMatAttr = attrs.find(a => a.attr_id === 2713 && a.level === 'trade-unit');
-  const packMat     = packMatAttr ? packMatAttr.attr_value : '';
-
-  // Короб (inner-pack)
-  const boxAttr     = attrs.find(a => a.attr_id === 2710 && a.level === 'inner-pack');
-  const boxQty      = boxAttr ? boxAttr.multiplier : '';
-  const boxGtin     = cat.identified_by ? (cat.identified_by.find(i => i.level === 'inner-pack') || {}).value : '';
+  const packMat   = packMatAttr ? packMatAttr.attr_value : '';
+  const boxAttr   = attrs.find(a => a.attr_id === 2710 && a.level === 'inner-pack');
+  const boxQty    = boxAttr ? boxAttr.multiplier : '';
+  const boxGtin   = cat.identified_by
+    ? ((cat.identified_by.find(i => i.level === 'inner-pack') || {}).value || '')
+    : '';
 
   // Статус
-  const statusMap   = { INTRODUCED: '✅ В обороте', RETIRED: '🚫 Выбыл из оборота', WRITTEN_OFF: '🚫 Списан', DISAGGREGATION: '📦 Расформирован' };
-  const statusText  = statusMap[rawStatus] || rawStatus || '—';
-  const isOk        = rawStatus === 'INTRODUCED';
+  const statusMap  = { INTRODUCED: '✅ В обороте', RETIRED: '🚫 Выбыл из оборота', WRITTEN_OFF: '🚫 Списан', DISAGGREGATION: '📦 Расформирован' };
+  const statusText = statusMap[rawStatus] || rawStatus || '—';
+  const isOk       = rawStatus === 'INTRODUCED';
 
   const badge = isOk
     ? '<div class="result-badge badge-crpt">✅ Честный знак — В обороте</div>'
     : '<div class="result-badge badge-err">⚠️ ' + statusText + '</div>';
 
-  function row(lbl, val, big) {
-    if (!val) return '';
+  function row(lbl, val) {
+    if (!val && val !== 0) return '';
     return `<div class="divider"></div>
     <div class="result-row">
       <div class="lbl">${lbl}</div>
-      <div class="val${big ? ' big' : ''}">${val}</div>
+      <div class="val">${val}</div>
     </div>`;
   }
 
   let html = badge;
 
-  // Артикул — самое важное, вверху крупно
+  // Артикул — крупно вверху
   if (supplierArt) html += `
     <div class="result-row" style="margin-top:4px">
       <div class="lbl">🔢 Артикул поставщика</div>
@@ -504,38 +422,40 @@ function renderHonestSignResult(data, raw, ean) {
   html += row('📦 Наименование', name + (kind ? ` (${kind})` : ''));
   html += row('🏷️ Бренд', brand);
   html += row('🏭 Производитель', producer);
-  html += row('📥 Импортёр', importer);
   html += row('🌍 Страна производства', country);
   html += row('📐 Объём / вес', volume);
 
-  if (expire) html += row('⏳ Срок годности', `<span style="color:${isExpiringSoon(expire) ? 'var(--red)' : 'var(--green)'};font-weight:700">${formatDate(expire)}</span>`);
+  // Срок годности — красный если < 90 дней
+  if (expire) {
+    const expColor = isExpiringSoon(expire) ? 'var(--red)' : 'var(--green)';
+    html += row('⏳ Срок годности', `<span style="color:${expColor};font-weight:700">${formatDate(expire)}</span>`);
+  }
 
-  if (producedMs)   html += row('🏗️ Дата производства',    formatTs(producedMs));
-  if (introducedMs) html += row('📅 Дата ввода в оборот',  formatTs(introducedMs));
+  // Даты из timestamp
+  const prodStr = producedMs ? formatTs(producedMs) : '';
+  const intrStr = introducedMs ? formatTs(introducedMs) : '';
+  html += row('🏗️ Дата производства',   prodStr);
+  html += row('📅 Дата ввода в оборот', intrStr);
 
-  if (packType) html += row('📦 Упаковка', `${packType}${packMat ? ' / ' + packMat : ''}`);
-  if (boxQty)   html += row('📦 Короб', `${boxQty} шт${boxGtin ? ' · GTIN: ' + boxGtin : ''}`);
+  // Упаковка
+  const packStr = [packType, packMat].filter(Boolean).join(' / ');
+  html += row('📦 Упаковка', packStr);
+  if (boxQty) html += row('📦 Короб', `${boxQty} шт${boxGtin ? ' · GTIN: ' + boxGtin : ''}`);
 
+  // Сертификат
   if (cert) {
     const certTypeMap = { STATE_REGISTRATION_CERTIFICATE: 'СГР', DECLARATION: 'Декларация', CERTIFICATE: 'Сертификат' };
-    const certType = certTypeMap[cert.certDocType] || cert.certDocType || '';
+    const certType = certTypeMap[cert.certDocType] || cert.certDocType || 'Документ';
     html += row(`📄 ${certType}`, cert.number);
   }
 
   html += row('📋 ТНВЭД', tnvd);
   html += row('📜 ТУ / ГОСТ', tuDoc);
-
-  if (goodUrl) html += `<div class="divider"></div>
-    <div class="result-row">
-      <div class="lbl">🔗 Нацкаталог</div>
-      <div class="val"><a href="${goodUrl}" target="_blank" style="color:var(--blue);font-size:13px;word-break:break-all">${goodUrl}</a></div>
-    </div>`;
-
   html += row('🔢 EAN / GTIN', gtin);
 
   resultCard.innerHTML = html;
 
-  // Для поиска в боте приоритет: артикул → EAN
+  // Для поиска в боте: приоритет артикул → EAN
   scannedEAN = supplierArt || gtin || ean || '';
   sendBtnEl.textContent = supplierArt
     ? `📲 Найти артикул ${supplierArt} в боте`
