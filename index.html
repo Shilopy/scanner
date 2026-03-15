@@ -377,11 +377,16 @@ function renderHonestSignResult(data, raw, ean) {
   const expire       = cd.expirationDate || '';
 
   // ── catalogData ──
-  const producer  = cat.producer_name || '';
-  const artAttr   = attrs.find(a => a.attr_id === 13797);
-  const supplierArt = artAttr ? artAttr.attr_value : '';
+  // Производитель — attr_id 2503
+  const producerAttr = attrs.find(a => a.attr_id === 2503);
+  const producer     = producerAttr ? producerAttr.attr_value : '';
+  // Артикул поставщика — attr_id 13797
+  const artAttr      = attrs.find(a => a.attr_id === 13797);
+  const supplierArt  = artAttr ? artAttr.attr_value : '';
+  // ТУ/ГОСТ — attr_id 4404
   const tuAttr    = attrs.find(a => a.attr_id === 4404);
   const tuDoc     = tuAttr ? `${tuAttr.attr_value_type || ''} ${tuAttr.attr_value}`.trim() : '';
+  // Упаковка
   const packAttr  = attrs.find(a => a.attr_id === 2710 && a.level === 'trade-unit');
   const packType  = packAttr ? packAttr.attr_value : '';
   const packMatAttr = attrs.find(a => a.attr_id === 2713 && a.level === 'trade-unit');
@@ -577,3 +582,4 @@ document.getElementById('manual').addEventListener('keydown', e => {
 });
 </script>
 </body>
+</html>
