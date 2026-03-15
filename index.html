@@ -335,13 +335,46 @@ async function processHonestSign(raw) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 
-    renderHonestSignResult(data, raw, eanFromGtin || gtin);
+    // DEBUG: показываем сырой JSON чтобы видеть реальные поля API
+    showRawJSON(data, raw, eanFromGtin || gtin);
 
   } catch(e) {
     console.error('Честный знак API:', e);
-    // Даже если API недоступен — показываем что удалось извлечь из кода
     renderHonestSignFallback(raw, gtin, eanFromGtin);
   }
+}
+
+function showRawJSON(data, raw, ean) {
+  // Показываем все поля которые реально пришли от API
+  const entries = Object.entries(data);
+  let rows = entries.map(([k, v]) => {
+    const val = (v === null || v === undefined) ? '<span style="color:#555">null</span>'
+              : typeof v === 'object' ? `<span style="color:#888;font-size:11px">${JSON.stringify(v).substring(0,80)}</span>`
+              : `<b>${v}</b>`;
+    return `<div class="result-row"><div class="lbl">${k}</div><div class="val" style="font-size:13px">${val}</div></div><div class="divider"></div>`;
+  }).join('');
+
+  resultCard.innerHTML = `
+    <div class="result-badge badge-crpt">🔍 Ответ API (отладка)</div>
+    <div class="result-row" style="margin-bottom:4px">
+      <div class="lbl">Всего полей: ${entries.length} | EAN извлечён: ${ean || '—'}</div>
+    </div>
+    <div class="divider"></div>
+    ${rows || '<div style="color:var(--sub);padding:8px">Пустой ответ</div>'}
+    <button onclick="renderHonestSignResult(window._lastCrptData, window._lastCrptRaw, window._lastCrptEan)"
+      style="margin-top:8px;padding:8px 14px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-size:13px;cursor:pointer">
+      Показать в обычном виде
+    </button>`;
+
+  // Сохраняем для кнопки "обычный вид"
+  window._lastCrptData = data;
+  window._lastCrptRaw  = raw;
+  window._lastCrptEan  = ean;
+
+  scannedEAN = ean || '';
+  if (scannedEAN) sendBtnEl.classList.add('show');
+  rescanBtn.classList.add('show');
+  setStatus(`✅ API ответил: ${entries.length} полей`, 'ok');
 }
 
 function extractGTIN(raw) {
