@@ -110,9 +110,11 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 }
 .badge-ean  { background: rgba(91,156,246,.12); color: var(--blue); }
 .badge-crpt { background: rgba(74,222,128,.12); color: var(--green); }
+.badge-warn { background: rgba(251,146,60,.12);  color: var(--orange); }
 .badge-err  { background: rgba(248,113,113,.12); color: var(--red); }
 [data-theme="light"] .badge-ean  { background: rgba(26,77,184,.1); }
 [data-theme="light"] .badge-crpt { background: rgba(21,128,61,.1); }
+[data-theme="light"] .badge-warn { background: rgba(234,88,12,.1); }
 [data-theme="light"] .badge-err  { background: rgba(220,38,38,.1); }
 
 .result-row { display: flex; flex-direction: column; gap: 2px; }
@@ -490,14 +492,25 @@ function renderHonestSignResult(data, raw, ean) {
     ? ((cat.identified_by.find(i => i.level === 'inner-pack') || {}).value || '')
     : '';
 
-  // Статус
-  const statusMap  = { INTRODUCED: '✅ В обороте', RETIRED: '🚫 Выбыл из оборота', WRITTEN_OFF: '🚫 Списан', DISAGGREGATION: '📦 Расформирован' };
-  const statusText = statusMap[rawStatus] || rawStatus || '—';
-  const isOk       = rawStatus === 'INTRODUCED';
+  // Статусы Честного знака с цветом и пояснением
+  const statusMap = {
+    INTRODUCED:    { icon: '✅', label: 'В обороте',              color: 'var(--green)',  note: 'Товар легально продаётся',                    ok: true  },
+    APPLIED:       { icon: '🟡', label: 'Код нанесён',            color: 'var(--orange)', note: 'Произведён, но ещё не введён в оборот',        ok: false },
+    EMITTED:       { icon: '🔵', label: 'Код выпущен',            color: 'var(--blue)',   note: 'Маркировка заказана, товар не произведён',     ok: false },
+    RETIRED:       { icon: '⛔', label: 'Выбыл из оборота',       color: 'var(--sub)',    note: 'Продан конечному покупателю или списан',       ok: false },
+    WRITTEN_OFF:   { icon: '⛔', label: 'Списан',                 color: 'var(--red)',    note: 'Утилизация, брак или уничтожение',             ok: false },
+    DISAGGREGATION:{ icon: '📦', label: 'Расформирован',          color: 'var(--sub)',    note: 'Групповая упаковка разобрана на штуки',        ok: false },
+    WITHDRAWN:     { icon: '⚠️', label: 'Отозван',               color: 'var(--red)',    note: 'Добровольный отзыв производителем',            ok: false },
+    RECALLED:      { icon: '🚨', label: 'Принудительный отзыв',  color: 'var(--red)',    note: 'Предписание надзорного органа',                ok: false },
+  };
 
-  const badge = isOk
-    ? '<div class="result-badge badge-crpt">✅ Честный знак — В обороте</div>'
-    : '<div class="result-badge badge-err">⚠️ ' + statusText + '</div>';
+  const st       = statusMap[rawStatus] || { icon: '❓', label: rawStatus || 'Неизвестен', color: 'var(--sub)', note: '', ok: false };
+  const statusText = st.label;
+  const isOk       = st.ok;
+
+  const badge = '<div class="result-badge ' + (isOk ? 'badge-crpt' : rawStatus === 'APPLIED' || rawStatus === 'EMITTED' ? 'badge-warn' : 'badge-err') + '">'
+    + st.icon + ' Честный знак — ' + statusText + '</div>'
+    + (st.note ? '<div style="font-size:11px;color:' + st.color + ';margin-top:2px;font-weight:600">' + esc(st.note) + '</div>' : '');
 
   function row(lbl, val) {
     if (!val && val !== 0) return '';
