@@ -337,8 +337,7 @@ async function processHonestSign(raw) {
     window._rawApiText = text;  // сохраняем сырой текст
     const data = JSON.parse(text);
 
-    // DEBUG: показываем сырой JSON чтобы видеть реальные поля API
-    showRawJSON(data, raw, eanFromGtin || gtin);
+    renderHonestSignResult(data, raw, eanFromGtin || gtin);
 
   } catch(e) {
     console.error('Честный знак API:', e);
@@ -432,57 +431,133 @@ function extractGTIN(raw) {
 }
 
 function renderHonestSignResult(data, raw, ean) {
-  const status = data.verified ? '✅ В обороте' : '⚠️ Не верифицирован';
-  const statusBadge = data.verified
-    ? '<div class="result-badge badge-crpt">✅ Честный знак</div>'
-    : '<div class="result-badge badge-err">⚠️ Не верифицирован</div>';
+  const cd  = data.constructionData || {};
+  const cr  = data.codeResolveData  || {};
+  const cat = (data.catalogData && data.catalogData[0]) || {};
+  const attrs = cat.good_attrs || [];
 
-  const name       = data.productName || data.name || '—';
-  const brand      = data.brand || data.producerName || '—';
-  const gtin       = data.gtin || extractGTIN(raw) || '—';
-  const expireDate = data.expireDate || data.expirationDate || '';
-  const country    = data.producerCountry || '';
+  // ── Из constructionData ──
+  const name        = cd.productName    || data.productName || '—';
+  const brand       = cd.brand          || '—';
+  const importer    = cd.importerName   || '—';
+  const country     = cd.country        || '';
+  const expire      = cd.expirationDate || '';
+  const tnvd        = cd.tnvd           || '';
+  const volume      = cd.volumeWeight   || '';
+  const kind        = cd.productKind    || '';
+  const rawStatus   = cd.status         || '';
+  const producedMs  = cd.producedDate   || null;
+  const introducedMs = cd.introducedDate || null;
+  const cert        = cd.certDoc        || (cd.certDocList && cd.certDocList[0]) || null;
+  const gtin        = (cd.gtin || cr.gtin || extractGTIN(raw) || '').replace(/^0+/, '');
 
-  let html = `
-    ${statusBadge}
+  // ── Из catalogData ──
+  const producer    = cat.producer_name || '';
+  const goodUrl     = cat.good_url      || '';
+
+  // Артикул поставщика (attr_id 13797)
+  const artAttr     = attrs.find(a => a.attr_id === 13797);
+  const supplierArt = artAttr ? artAttr.attr_value : '';
+
+  // ТУ/ГОСТ (attr_id 4404)
+  const tuAttr      = attrs.find(a => a.attr_id === 4404);
+  const tuDoc       = tuAttr ? `${tuAttr.attr_value_type || ''} ${tuAttr.attr_value}`.trim() : '';
+
+  // Упаковка unit (attr_id 2710, level trade-unit)
+  const packAttr    = attrs.find(a => a.attr_id === 2710 && a.level === 'trade-unit');
+  const packType    = packAttr ? packAttr.attr_value : '';
+  const packMatAttr = attrs.find(a => a.attr_id === 2713 && a.level === 'trade-unit');
+  const packMat     = packMatAttr ? packMatAttr.attr_value : '';
+
+  // Короб (inner-pack)
+  const boxAttr     = attrs.find(a => a.attr_id === 2710 && a.level === 'inner-pack');
+  const boxQty      = boxAttr ? boxAttr.multiplier : '';
+  const boxGtin     = cat.identified_by ? (cat.identified_by.find(i => i.level === 'inner-pack') || {}).value : '';
+
+  // Статус
+  const statusMap   = { INTRODUCED: '✅ В обороте', RETIRED: '🚫 Выбыл из оборота', WRITTEN_OFF: '🚫 Списан', DISAGGREGATION: '📦 Расформирован' };
+  const statusText  = statusMap[rawStatus] || rawStatus || '—';
+  const isOk        = rawStatus === 'INTRODUCED';
+
+  const badge = isOk
+    ? '<div class="result-badge badge-crpt">✅ Честный знак — В обороте</div>'
+    : '<div class="result-badge badge-err">⚠️ ' + statusText + '</div>';
+
+  function row(lbl, val, big) {
+    if (!val) return '';
+    return `<div class="divider"></div>
     <div class="result-row">
-      <div class="lbl">Наименование</div>
-      <div class="val">${name}</div>
-    </div>
-    <div class="divider"></div>
-    <div class="result-row">
-      <div class="lbl">Производитель / бренд</div>
-      <div class="val">${brand}${country ? ' (' + country + ')' : ''}</div>
+      <div class="lbl">${lbl}</div>
+      <div class="val${big ? ' big' : ''}">${val}</div>
+    </div>`;
+  }
+
+  let html = badge;
+
+  // Артикул — самое важное, вверху крупно
+  if (supplierArt) html += `
+    <div class="result-row" style="margin-top:4px">
+      <div class="lbl">🔢 Артикул поставщика</div>
+      <div class="val big">${supplierArt}</div>
     </div>`;
 
-  if (expireDate) html += `
-    <div class="divider"></div>
+  html += row('📦 Наименование', name + (kind ? ` (${kind})` : ''));
+  html += row('🏷️ Бренд', brand);
+  html += row('🏭 Производитель', producer);
+  html += row('📥 Импортёр', importer);
+  html += row('🌍 Страна производства', country);
+  html += row('📐 Объём / вес', volume);
+
+  if (expire) html += row('⏳ Срок годности', `<span style="color:${isExpiringSoon(expire) ? 'var(--red)' : 'var(--green)'};font-weight:700">${formatDate(expire)}</span>`);
+
+  if (producedMs)   html += row('🏗️ Дата производства',    formatTs(producedMs));
+  if (introducedMs) html += row('📅 Дата ввода в оборот',  formatTs(introducedMs));
+
+  if (packType) html += row('📦 Упаковка', `${packType}${packMat ? ' / ' + packMat : ''}`);
+  if (boxQty)   html += row('📦 Короб', `${boxQty} шт${boxGtin ? ' · GTIN: ' + boxGtin : ''}`);
+
+  if (cert) {
+    const certTypeMap = { STATE_REGISTRATION_CERTIFICATE: 'СГР', DECLARATION: 'Декларация', CERTIFICATE: 'Сертификат' };
+    const certType = certTypeMap[cert.certDocType] || cert.certDocType || '';
+    html += row(`📄 ${certType}`, cert.number);
+  }
+
+  html += row('📋 ТНВЭД', tnvd);
+  html += row('📜 ТУ / ГОСТ', tuDoc);
+
+  if (goodUrl) html += `<div class="divider"></div>
     <div class="result-row">
-      <div class="lbl">Срок годности</div>
-      <div class="val">${formatDate(expireDate)}</div>
+      <div class="lbl">🔗 Нацкаталог</div>
+      <div class="val"><a href="${goodUrl}" target="_blank" style="color:var(--blue);font-size:13px;word-break:break-all">${goodUrl}</a></div>
     </div>`;
 
-  if (gtin && gtin !== '—') html += `
-    <div class="divider"></div>
-    <div class="result-row">
-      <div class="lbl">GTIN</div>
-      <div class="val" style="font-size:13px;color:var(--sub)">${gtin}</div>
-    </div>`;
-
-  if (ean) html += `
-    <div class="divider"></div>
-    <div class="result-row">
-      <div class="lbl">EAN (для поиска в боте)</div>
-      <div class="val big">${ean}</div>
-    </div>`;
+  html += row('🔢 EAN / GTIN', gtin);
 
   resultCard.innerHTML = html;
-  scannedEAN = ean || gtin || '';
+
+  // Для поиска в боте приоритет: артикул → EAN
+  scannedEAN = supplierArt || gtin || ean || '';
+  sendBtnEl.textContent = supplierArt
+    ? `📲 Найти артикул ${supplierArt} в боте`
+    : '📲 Отправить в бот';
 
   sendBtnEl.classList.add('show');
   rescanBtn.classList.add('show');
-  setStatus(data.verified ? '✅ Товар верифицирован' : '⚠️ Статус не подтверждён',
-            data.verified ? 'ok' : 'err');
+  setStatus(isOk ? '✅ Товар верифицирован, в обороте' : '⚠️ ' + statusText, isOk ? 'ok' : 'err');
+}
+
+function formatTs(ms) {
+  if (!ms) return '';
+  try { return new Date(ms).toLocaleDateString('ru-RU'); } catch(_) { return ''; }
+}
+
+function isExpiringSoon(dateStr) {
+  try {
+    const exp = new Date(dateStr);
+    const now = new Date();
+    const days = (exp - now) / (1000 * 60 * 60 * 24);
+    return days < 90;
+  } catch(_) { return false; }
 }
 
 function renderHonestSignFallback(raw, gtin, ean) {
@@ -582,4 +657,3 @@ document.getElementById('manual').addEventListener('keydown', e => {
 });
 </script>
 </body>
-</html>
