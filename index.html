@@ -386,36 +386,42 @@ function showRawJSON(data, raw, ean) {
     }).join('');
   }
 
-  const rows = flatRows(data, '');
-  const pretty = JSON.stringify(data, null, 2);
-  resultCard.innerHTML = `
-    <div class="result-badge badge-crpt">🔍 Ответ API (все поля)</div>
-    <div class="result-row"><div class="lbl">EAN из кода: ${ean || '—'}</div></div>
-    <button onclick="copyFullJSON()" style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer;margin:4px 0" id="copy-json-btn">
-      📋 Скопировать полный JSON
-    </button>
-    <div class="divider"></div>
-    ${rows || '<div style="color:var(--sub);padding:8px">Пустой ответ</div>'}
-    <textarea id="full-json-area" style="width:100%;height:120px;background:var(--card);color:#4ade80;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:10px;font-family:monospace;resize:vertical;margin-top:8px">${pretty.replace(/</g,'&lt;')}</textarea>`;
-
+  // Сохраняем JSON глобально для копирования
   window._lastCrptData = data;
   window._lastCrptRaw  = raw;
   window._lastCrptEan  = ean;
+  window._lastCrptJSON = JSON.stringify(data, null, 2);
+
+  const rows = flatRows(data, '');
+  resultCard.innerHTML = `
+    <div class="result-badge badge-crpt">🔍 Ответ API</div>
+    <div class="result-row"><div class="lbl">EAN из кода: ${ean || '—'}</div></div>
+    <button id="copy-json-btn" style="padding:10px 14px;border-radius:8px;border:1.5px solid var(--blue);background:transparent;color:var(--blue);font-size:14px;font-weight:700;cursor:pointer;margin:4px 0;width:100%">
+      📋 Скопировать JSON для отладки
+    </button>
+    <div class="divider"></div>
+    ${rows || '<div style="color:var(--sub);padding:8px">Пустой ответ</div>'}`;
+
+  // Вешаем обработчик ПОСЛЕ вставки в DOM
+  setTimeout(() => {
+    const btn = document.getElementById('copy-json-btn');
+    if (btn) btn.addEventListener('click', copyFullJSON);
+  }, 100);
 
   scannedEAN = ean || '';
   if (scannedEAN) sendBtnEl.classList.add('show');
   rescanBtn.classList.add('show');
-  setStatus('✅ Все поля развёрнуты — скопируйте JSON', 'ok');
+  setStatus('✅ Нажмите кнопку чтобы скопировать JSON', 'ok');
 }
 
 function copyFullJSON() {
-  const area = document.getElementById('full-json-area');
-  const text = area ? area.value : JSON.stringify(window._lastCrptData, null, 2);
+  const text = window._lastCrptJSON || JSON.stringify(window._lastCrptData, null, 2);
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('copy-json-btn');
-    if (btn) { btn.textContent = '✅ Скопировано!'; setTimeout(() => btn.textContent = '📋 Скопировать полный JSON', 2000); }
+    if (btn) { btn.textContent = '✅ JSON скопирован! Вставьте разработчику.'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)'; }
   }).catch(() => {
-    area.select(); document.execCommand('copy');
+    // fallback — показываем JSON в prompt чтобы вручную скопировать
+    prompt('Скопируйте JSON:', window._lastCrptJSON);
   });
 }
 
