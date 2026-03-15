@@ -9,11 +9,36 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --blue: #5b9cf6; --purple: #a78bfa; --green: #4ade80; --red: #f87171;
-  --orange: #fb923c; --bg: #0a0a0a; --card: #1c1c1e; --border: #2c2c2e;
+  --orange: #fb923c;
+  --bg: #0a0a0a; --card: #1c1c1e; --border: #2c2c2e;
   --text: #f0f0f0; --sub: #888;
 }
+[data-theme="light"] {
+  --bg: #f5f3ef; --card: #ffffff; --border: #e2dfd8;
+  --text: #1a1917; --sub: #6b6860;
+  --blue: #1a4db8; --purple: #7c3aed; --green: #15803d;
+  --red: #dc2626; --orange: #ea580c;
+}
 html, body { background: var(--bg); color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: background .25s, color .25s; }
+
+/* theme toggle */
+.top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 18px 0; max-width: 480px; margin: 0 auto;
+}
+.top-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 20px;
+  border: 1.5px solid var(--border); background: var(--card);
+  color: var(--text); font-size: 12px; font-weight: 600;
+  cursor: pointer; text-decoration: none;
+  transition: background .2s, border-color .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.top-btn:active { opacity: .7; }
+.theme-icon { font-size: 14px; line-height: 1; }
 
 /* ── header ── */
 .header { padding: 14px 18px 8px; text-align: center; }
@@ -34,6 +59,7 @@ html, body { background: var(--bg); color: var(--text);
 #reader {
   width: 100%; max-width: 480px; margin: 0 auto;
   border-radius: 14px; overflow: hidden; background: #000;
+  border: 1px solid var(--border);
 }
 #reader__dashboard_section_swaplink,
 #reader__status_span,
@@ -82,9 +108,12 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
   font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
   text-transform: uppercase; letter-spacing: .5px; align-self: flex-start;
 }
-.badge-ean  { background: rgba(91,156,246,.15); color: var(--blue); }
-.badge-crpt { background: rgba(74,222,128,.15); color: var(--green); }
-.badge-err  { background: rgba(248,113,113,.15); color: var(--red); }
+.badge-ean  { background: rgba(91,156,246,.12); color: var(--blue); }
+.badge-crpt { background: rgba(74,222,128,.12); color: var(--green); }
+.badge-err  { background: rgba(248,113,113,.12); color: var(--red); }
+[data-theme="light"] .badge-ean  { background: rgba(26,77,184,.1); }
+[data-theme="light"] .badge-crpt { background: rgba(21,128,61,.1); }
+[data-theme="light"] .badge-err  { background: rgba(220,38,38,.1); }
 
 .result-row { display: flex; flex-direction: column; gap: 2px; }
 .result-row .lbl { font-size: 11px; color: var(--sub); }
@@ -139,6 +168,13 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 </head>
 <body>
 
+<div class="top-bar">
+  <a class="top-btn" href="guide.html" target="_blank">📋 Инструкция</a>
+  <button class="top-btn" onclick="toggleTheme()" id="theme-btn">
+    <span class="theme-icon" id="theme-icon">☀️</span>
+    <span id="theme-label">Светлая</span>
+  </button>
+</div>
 <div class="header">
   <h1>📷 Сканер</h1>
   <p>EAN штрих-код или DataMatrix Честного знака</p>
@@ -201,6 +237,36 @@ const startBtn   = document.getElementById('start-btn');
 const resultCard = document.getElementById('result-card');
 const sendBtnEl  = document.getElementById('send-btn');
 const rescanBtn  = document.getElementById('rescan-btn');
+
+// ── Theme ────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.documentElement.dataset.theme === 'light';
+  const newTheme = isLight ? 'dark' : 'light';
+  document.documentElement.dataset.theme = newTheme;
+  localStorage.setItem('scanner-theme', newTheme);
+  updateThemeBtn(newTheme);
+}
+
+function updateThemeBtn(theme) {
+  const icon  = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if (theme === 'light') {
+    icon.textContent  = '🌙';
+    label.textContent = 'Тёмная';
+  } else {
+    icon.textContent  = '☀️';
+    label.textContent = 'Светлая';
+  }
+}
+
+// Init theme from saved preference or system setting
+(function() {
+  const saved = localStorage.getItem('scanner-theme');
+  const sys   = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  const theme = saved || sys;
+  document.documentElement.dataset.theme = theme;
+  updateThemeBtn(theme);
+})();
 
 function setStatus(msg, cls = '') {
   statusEl.textContent = msg;
