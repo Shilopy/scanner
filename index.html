@@ -60,15 +60,22 @@ html, body { background: var(--bg); color: var(--text);
   width: 100%; max-width: 480px; margin: 0 auto;
   border-radius: 14px; overflow: hidden; background: #000;
   border: 1px solid var(--border);
+  height: min(100vw, 480px);
+  max-height: 480px;
+  position: relative;
 }
-#reader__dashboard_section_swaplink,
-#reader__status_span,
-#reader__header_message { display: none !important; }
-#reader img { display: none; }
-#reader select {
-  background: var(--card); color: var(--text);
-  border: 1.5px solid var(--border); border-radius: 8px;
-  padding: 6px 10px; font-size: 13px; margin: 6px auto; display: block;
+#reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  position: absolute !important;
+  top: 0 !important; left: 0 !important;
+}
+#reader > div:first-of-type {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important; left: 0 !important;
 }
 
 /* ── scan controls — появляются под камерой во время сканирования ── */
