@@ -2,697 +2,266 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Сканер — Soudal</title>
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Сканер QR / DataMatrix / EAN</title>
+
+<!-- ZXing -->
+<script src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js"></script>
+
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --blue: #5b9cf6; --purple: #a78bfa; --green: #4ade80; --red: #f87171;
-  --orange: #fb923c;
-  --bg: #0a0a0a; --card: #1c1c1e; --border: #2c2c2e;
-  --text: #f0f0f0; --sub: #888;
-}
-[data-theme="light"] {
-  --bg: #f5f3ef; --card: #ffffff; --border: #e2dfd8;
-  --text: #1a1917; --sub: #6b6860;
-  --blue: #1a4db8; --purple: #7c3aed; --green: #15803d;
-  --red: #dc2626; --orange: #ea580c;
-}
-html, body { background: var(--bg); color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  transition: background .25s, color .25s; }
-
-/* theme toggle */
-.top-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 18px 0; max-width: 480px; margin: 0 auto;
-}
-.top-btn {
-  display: flex; align-items: center; gap: 5px;
-  padding: 6px 12px; border-radius: 20px;
-  border: 1.5px solid var(--border); background: var(--card);
-  color: var(--text); font-size: 12px; font-weight: 600;
-  cursor: pointer; text-decoration: none;
-  transition: background .2s, border-color .2s;
-  -webkit-tap-highlight-color: transparent;
-}
-.top-btn:active { opacity: .7; }
-.theme-icon { font-size: 14px; line-height: 1; }
-
-/* ── header ── */
-.header { padding: 14px 18px 8px; text-align: center; }
-.header h1 { font-size: 17px; font-weight: 700; }
-.header p  { font-size: 12px; color: var(--sub); margin-top: 3px; }
-
-/* ── mode tabs ── */
-.tabs { display: flex; gap: 8px; padding: 0 18px 10px; max-width: 480px; margin: 0 auto; }
-.tab {
-  flex: 1; padding: 9px 4px; border-radius: 10px; border: 1.5px solid var(--border);
-  background: var(--card); color: var(--sub); font-size: 13px; font-weight: 600;
-  cursor: pointer; text-align: center; transition: all .15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.tab.active { border-color: var(--blue); color: var(--blue); background: rgba(91,156,246,.1); }
-
-/* ── reader ── */
-#reader {
-  width: 100%; max-width: 480px; margin: 0 auto;
-  border-radius: 14px; overflow: hidden; background: #000;
-  border: 1px solid var(--border);
-}
-#reader__dashboard_section_swaplink,
-#reader__status_span,
-#reader__header_message { display: none !important; }
-#reader img { display: none; }
-#reader select {
-  background: var(--card); color: var(--text);
-  border: 1.5px solid var(--border); border-radius: 8px;
-  padding: 6px 10px; font-size: 13px; margin: 6px auto; display: block;
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;
+  background:#0a0a0a;
+  color:#fff;
+  text-align:center;
 }
 
-/* ── bottom ── */
-.bottom { padding: 12px 18px 28px; display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin: 0 auto; }
-
-#status { text-align: center; font-size: 13px; color: var(--sub); min-height: 17px; transition: color .2s; }
-#status.ok  { color: var(--green); }
-#status.err { color: var(--red); }
-#status.loading { color: var(--orange); }
-
-.row { display: flex; gap: 8px; }
-input[type=text], input[type=number] {
-  flex: 1; padding: 12px 14px; background: var(--card);
-  border: 1.5px solid var(--border); border-radius: 10px;
-  color: var(--text); font-size: 15px; outline: none; -webkit-appearance: none;
+.header{
+  padding:16px;
 }
-input:focus { border-color: var(--blue); }
-input::placeholder { color: #444; }
-input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-.btn { padding: 12px 18px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
-  cursor: pointer; -webkit-tap-highlight-color: transparent; transition: opacity .15s; }
-.btn:active { opacity: .7; }
-.btn-gray  { background: var(--card); color: #ccc; }
-.btn-start { background: var(--blue); color: #fff; width: 100%; padding: 13px; font-size: 15px;
-  border-radius: 12px; border: none; font-weight: 700; cursor: pointer;
-  -webkit-tap-highlight-color: transparent; }
-
-/* ── result card ── */
-#result-card {
-  display: none; background: var(--card); border: 1.5px solid var(--border);
-  border-radius: 12px; padding: 14px 16px; flex-direction: column; gap: 6px;
+h1{
+  font-size:18px;
+  margin:0;
 }
-#result-card.show { display: flex; }
-.result-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
-  text-transform: uppercase; letter-spacing: .5px; align-self: flex-start;
-}
-.badge-ean  { background: rgba(91,156,246,.12); color: var(--blue); }
-.badge-crpt { background: rgba(74,222,128,.12); color: var(--green); }
-.badge-warn { background: rgba(251,146,60,.12);  color: var(--orange); }
-.badge-err  { background: rgba(248,113,113,.12); color: var(--red); }
-[data-theme="light"] .badge-ean  { background: rgba(26,77,184,.1); }
-[data-theme="light"] .badge-crpt { background: rgba(21,128,61,.1); }
-[data-theme="light"] .badge-warn { background: rgba(234,88,12,.1); }
-[data-theme="light"] .badge-err  { background: rgba(220,38,38,.1); }
 
-.result-row { display: flex; flex-direction: column; gap: 2px; }
-.result-row .lbl { font-size: 11px; color: var(--sub); }
-.result-row .val { font-size: 14px; font-weight: 600; line-height: 1.4; }
-.result-row .val.big { font-size: 22px; font-weight: 800; color: var(--blue); letter-spacing: 1.5px; }
-
-.divider { height: 1px; background: var(--border); margin: 2px 0; }
-
-/* ── action buttons ── */
-#send-btn {
-  display: none; width: 100%; padding: 14px; border-radius: 12px; border: none;
-  background: linear-gradient(135deg, var(--blue), var(--purple));
-  color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+p{
+  color:#aaa;
+  font-size:13px;
 }
-#send-btn.show { display: block; }
-#rescan-btn {
-  display: none; width: 100%; padding: 12px; border-radius: 10px; border: none;
-  background: var(--card); color: var(--text); font-size: 14px; font-weight: 600;
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
-}
-#rescan-btn.show { display: block; }
 
-/* ── success ── */
-#success {
-  display: none; position: fixed; inset: 0; background: var(--bg); z-index: 99;
-  flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px; text-align: center; padding: 32px;
+#reader{
+  max-width:480px;
+  margin:auto;
+  position:relative;
 }
-#success.show { display: flex; }
-#success .icon  { font-size: 64px; animation: pop .4s cubic-bezier(.18,.89,.32,1.28); }
-@keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
-#success .title { font-size: 20px; font-weight: 800; }
-#success .ean   { font-size: 22px; font-weight: 800; color: var(--blue); letter-spacing: 2px;
-  background: var(--card); padding: 10px 22px; border-radius: 10px; cursor: pointer; }
-.steps { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 300px; text-align: left; }
-.step { display: flex; align-items: flex-start; gap: 12px; }
-.step-num { background: var(--blue); color: #fff; font-weight: 800; font-size: 13px;
-  width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
-  justify-content: center; flex-shrink: 0; margin-top: 2px; }
-.step-text { font-size: 13px; color: var(--text); line-height: 1.5; }
-.open-btn { width: 100%; max-width: 300px; padding: 14px; border-radius: 12px; border: none;
-  background: linear-gradient(135deg, var(--blue), var(--purple));
-  color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.copy-btn { padding: 11px 24px; border-radius: 10px; border: 1.5px solid var(--border);
-  background: transparent; color: var(--text); font-size: 14px; font-weight: 600;
-  cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.again-btn { padding: 11px 24px; border-radius: 10px; border: none;
-  background: var(--card); color: var(--sub); font-size: 14px; font-weight: 600;
-  cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+video{
+  width:100%;
+  border-radius:14px;
+  background:#000;
+}
+
+.scan-box{
+  position:absolute;
+  border:2px solid #4f8cff;
+  width:200px;
+  height:200px;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  border-radius:10px;
+}
+
+.controls{
+  padding:16px;
+  max-width:480px;
+  margin:auto;
+}
+
+button{
+  padding:12px 18px;
+  margin:6px;
+  font-size:15px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.btn-start{background:#4f8cff;color:#fff}
+.btn-gray{background:#1c1c1e;color:#ccc}
+
+#status{
+  font-size:13px;
+  margin-top:6px;
+  color:#aaa;
+}
+
+#result{
+  margin-top:16px;
+  padding:14px;
+  background:#1c1c1e;
+  border-radius:12px;
+  display:none;
+}
+
+.result-big{
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:2px;
+}
+
 </style>
 </head>
+
 <body>
 
-<div class="top-bar">
-  <a class="top-btn" href="guide.html" target="_blank">📋 Инструкция</a>
-  <button class="top-btn" onclick="toggleTheme()" id="theme-btn">
-    <span class="theme-icon" id="theme-icon">☀️</span>
-    <span id="theme-label">Светлая</span>
-  </button>
-</div>
 <div class="header">
-  <h1>📷 Сканер</h1>
-  <p>EAN штрих-код или DataMatrix Честного знака</p>
+<h1>📷 Сканер</h1>
+<p>QR / DataMatrix / EAN</p>
 </div>
 
-<!-- Tabs -->
-<div class="tabs">
-  <div class="tab active" id="tab-ean" onclick="switchMode('ean')">📦 EAN / Штрих-код</div>
-  <div class="tab" id="tab-crpt" onclick="switchMode('crpt')">✅ Честный знак</div>
+<div id="reader">
+<video id="video" playsinline></video>
+<div class="scan-box"></div>
 </div>
 
-<div id="reader"></div>
+<div class="controls">
 
-<div class="bottom">
-  <div id="status">Нажмите кнопку для запуска камеры</div>
+<button class="btn-start" onclick="startScanner()">📷 Запустить камеру</button>
 
-  <button class="btn-start" id="start-btn" onclick="startScanner()">📷 Запустить камеру</button>
+<button class="btn-gray" onclick="toggleTorch()">🔦 Фонарик</button>
 
-  <div class="row">
-    <input id="manual" type="text" inputmode="text" placeholder="Введите код вручную">
-    <button class="btn btn-gray" onclick="submitManual()">Найти</button>
-  </div>
+<button class="btn-gray" onclick="toggleZoom()">🔍 Zoom</button>
 
-  <div id="result-card"></div>
+<div id="status">Нажмите кнопку запуска</div>
 
-  <button id="send-btn" onclick="sendToBot()">📲 Отправить в бот</button>
-  <button id="rescan-btn" onclick="rescan()">🔄 Сканировать ещё раз</button>
+<div id="result">
+<div>Считанный код</div>
+<div id="code" class="result-big"></div>
 </div>
 
-<!-- Success -->
-<div id="success">
-  <div class="icon">✅</div>
-  <div class="title">Готово!</div>
-  <div class="ean" id="success-ean" onclick="copyEAN()"></div>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div>
-      <div class="step-text">Код скопирован в буфер обмена</div></div>
-    <div class="step"><div class="step-num">2</div>
-      <div class="step-text">Нажмите кнопку — откроется чат с ботом</div></div>
-    <div class="step"><div class="step-num">3</div>
-      <div class="step-text">Долгое нажатие в поле → <b>Вставить → Отправить</b></div></div>
-  </div>
-  <button class="open-btn" onclick="openBot()">📲 Открыть чат с ботом</button>
-  <button class="copy-btn" id="copy-again-btn" onclick="copyAndConfirm()">📋 Скопировать ещё раз</button>
-  <button class="again-btn" onclick="resetAll()">🔄 Сканировать другой товар</button>
 </div>
 
 <script>
-// ══════════════════════════════════
-const VK_GROUP_ID = '236652808';
-// ══════════════════════════════════
 
-// XSS защита — экранируем все данные из API перед вставкой в HTML
-function esc(str) {
-  if (!str && str !== 0) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
+let codeReader=null
+let stream=null
+let track=null
+let scanning=false
+let torch=false
+let zoomLevel=1
+let deviceId=null
+
+const video=document.getElementById("video")
+const statusEl=document.getElementById("status")
+const resultBox=document.getElementById("result")
+const codeEl=document.getElementById("code")
+
+function setStatus(msg){
+  statusEl.textContent=msg
 }
 
-// Fetch с таймаутом (8 секунд)
-async function fetchWithTimeout(url, options = {}, ms = 8000) {
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), ms);
-  try {
-    return await fetch(url, { ...options, signal: ctrl.signal });
-  } finally {
-    clearTimeout(tid);
-  }
+async function startScanner(){
+
+try{
+
+setStatus("Поиск камеры...")
+
+const devices=await ZXingBrowser.BrowserCodeReader.listVideoInputDevices()
+
+const backCam=devices.find(d=>
+d.label.toLowerCase().includes("back")||
+d.label.toLowerCase().includes("rear")||
+d.label.toLowerCase().includes("environment")
+)
+
+deviceId=backCam?backCam.deviceId:devices[0].deviceId
+
+setStatus("Запуск камеры...")
+
+stream=await navigator.mediaDevices.getUserMedia({
+video:{
+deviceId:deviceId,
+width:{ideal:1920},
+height:{ideal:1080},
+focusMode:"continuous",
+advanced:[{zoom:2}]
+}
+})
+
+video.srcObject=stream
+await video.play()
+
+track=stream.getVideoTracks()[0]
+
+codeReader=new ZXingBrowser.BrowserMultiFormatReader()
+
+scanning=true
+
+setStatus("Наведите камеру на код")
+
+codeReader.decodeFromVideoDevice(deviceId,video,(result,err)=>{
+
+if(!scanning) return
+
+if(result){
+
+navigator.vibrate?.(120)
+
+scanning=false
+
+showResult(result.text)
+
 }
 
-let scanner    = null;
-let scanActive = false;
-let scannedEAN = '';       // код для отправки в бот
-let currentMode = 'ean';  // 'ean' | 'crpt'
+})
 
-const statusEl   = document.getElementById('status');
-const startBtn   = document.getElementById('start-btn');
-const resultCard = document.getElementById('result-card');
-const sendBtnEl  = document.getElementById('send-btn');
-const rescanBtn  = document.getElementById('rescan-btn');
+}catch(e){
 
-// ── Theme ────────────────────────────────────────
-function toggleTheme() {
-  const isLight = document.documentElement.dataset.theme === 'light';
-  const newTheme = isLight ? 'dark' : 'light';
-  document.documentElement.dataset.theme = newTheme;
-  localStorage.setItem('scanner-theme', newTheme);
-  updateThemeBtn(newTheme);
+console.error(e)
+setStatus("Ошибка доступа к камере")
+
 }
 
-function updateThemeBtn(theme) {
-  const icon  = document.getElementById('theme-icon');
-  const label = document.getElementById('theme-label');
-  if (theme === 'light') {
-    icon.textContent  = '🌙';
-    label.textContent = 'Тёмная';
-  } else {
-    icon.textContent  = '☀️';
-    label.textContent = 'Светлая';
-  }
 }
 
-// Init theme from saved preference or system setting
-(function() {
-  const saved = localStorage.getItem('scanner-theme');
-  const sys   = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  const theme = saved || sys;
-  document.documentElement.dataset.theme = theme;
-  updateThemeBtn(theme);
-})();
+function showResult(code){
 
-function setStatus(msg, cls = '') {
-  statusEl.textContent = msg;
-  statusEl.className = cls;
+codeEl.textContent=code
+resultBox.style.display="block"
+
+setStatus("Код успешно считан")
+
 }
 
-// ── Mode switch ──────────────────────────────────────
-function switchMode(mode) {
-  currentMode = mode;
-  document.getElementById('tab-ean').classList.toggle('active', mode === 'ean');
-  document.getElementById('tab-crpt').classList.toggle('active', mode === 'crpt');
-  document.getElementById('manual').placeholder =
-    mode === 'ean' ? 'Введите EAN вручную' : 'Вставьте код DataMatrix';
-  // restart scanner with correct formats
-  if (scanActive && scanner) {
-    scanActive = false;
-    scanner.stop().then(() => { scanner = null; startScanner(); }).catch(() => { scanner = null; startScanner(); });
-  }
+async function toggleTorch(){
+
+if(!track) return
+
+torch=!torch
+
+try{
+
+await track.applyConstraints({
+advanced:[{torch:torch}]
+})
+
+}catch(e){
+
+console.log("Фонарик не поддерживается")
+
 }
 
-// ── Scanner ──────────────────────────────────────────
-async function startScanner() {
-  startBtn.style.display = 'none';
-  setStatus('Запрашиваю доступ к камере…');
-
-  const eanFormats = [
-    Html5QrcodeSupportedFormats.EAN_13,
-    Html5QrcodeSupportedFormats.EAN_8,
-    Html5QrcodeSupportedFormats.CODE_128,
-    Html5QrcodeSupportedFormats.CODE_39,
-    Html5QrcodeSupportedFormats.UPC_A,
-    Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.ITF,
-  ];
-  const crptFormats = [
-    Html5QrcodeSupportedFormats.DATA_MATRIX,
-    Html5QrcodeSupportedFormats.QR_CODE,
-    Html5QrcodeSupportedFormats.CODE_128,
-  ];
-
-  try {
-    scanner = new Html5Qrcode('reader');
-    await scanner.start(
-      { facingMode: 'environment' },
-      {
-        fps: 15,
-        qrbox: currentMode === 'ean'
-          ? { width: 260, height: 100 }
-          : { width: 220, height: 220 },
-        aspectRatio: currentMode === 'ean' ? 1.7 : 1.0,
-        formatsToSupport: currentMode === 'ean' ? eanFormats : crptFormats,
-      },
-      onScanSuccess,
-      () => {}
-    );
-    scanActive = true;
-    setStatus(currentMode === 'ean'
-      ? 'Наведите камеру на штрих-код…'
-      : 'Наведите камеру на квадратный код DataMatrix…');
-  } catch(e) {
-    startBtn.style.display = 'block';
-    if (/NotAllowed|Permission/i.test(e.toString()))
-      setStatus('⛔ Доступ к камере запрещён. Разрешите в настройках браузера.', 'err');
-    else if (/NotFound/i.test(e.toString()))
-      setStatus('📵 Камера не найдена. Введите код вручную.', 'err');
-    else
-      setStatus('❌ Не удалось запустить камеру. Введите код вручную.', 'err');
-  }
 }
 
-let lastScan = 0;
-function onScanSuccess(raw) {
-  if (!scanActive) return;
-  const now = Date.now();
-  if (now - lastScan < 1200) return;
-  lastScan = now;
-  scanActive = false;
-  scanner.stop().catch(() => {});
-  try { navigator.vibrate?.(120); } catch(_) {}
+async function toggleZoom(){
 
-  if (currentMode === 'crpt') {
-    processHonestSign(raw);
-  } else {
-    const ean = raw.replace(/\D/g, '');
-    if (ean.length < 8) {
-      setStatus('Код не распознан как EAN. Попробуйте ещё.', 'err');
-      rescan(); return;
-    }
-    showEANResult(ean);
-  }
+if(!track) return
+
+zoomLevel++
+
+if(zoomLevel>4) zoomLevel=1
+
+try{
+
+await track.applyConstraints({
+advanced:[{zoom:zoomLevel}]
+})
+
+setStatus("Zoom x"+zoomLevel)
+
+}catch(e){
+
+console.log("Zoom unsupported")
+
 }
 
-// ── EAN result ───────────────────────────────────────
-function showEANResult(ean) {
-  scannedEAN = ean;
-  resultCard.innerHTML = `
-    <div class="result-badge badge-ean">📦 EAN штрих-код</div>
-    <div class="result-row">
-      <div class="lbl">Код товара</div>
-      <div class="val big">${ean}</div>
-    </div>
-    <div class="result-row">
-      <div class="lbl">Что дальше</div>
-      <div class="val">Отправьте в бот — получите данные из ERP</div>
-    </div>`;
-  resultCard.classList.add('show');
-  sendBtnEl.classList.add('show');
-  rescanBtn.classList.add('show');
-  setStatus('✅ EAN считан!', 'ok');
 }
 
-// ── Честный знак ─────────────────────────────────────
-async function processHonestSign(raw) {
-  setStatus('🔍 Запрашиваю данные Честного знака…', 'loading');
-  resultCard.innerHTML = `<div style="text-align:center;padding:16px;color:var(--sub)">⏳ Загрузка…</div>`;
-  resultCard.classList.add('show');
-
-  // Из DataMatrix кода Честного знака извлекаем GTIN (первые 14 цифр после 01)
-  const gtin = extractGTIN(raw);
-  // Для отправки в бот берём EAN (убираем ведущий ноль из GTIN)
-  const eanFromGtin = gtin ? gtin.replace(/^0+/, '') : '';
-
-  try {
-    // Публичное API Честного знака — проверка кода
-    const encoded = encodeURIComponent(raw);
-    const url = `https://mobile.api.crpt.ru/mobile/check?code=${encoded}`;
-
-    const resp = await fetchWithTimeout(url, {
-      headers: { 'Accept': 'application/json' }
-    }, 8000);
-
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const text = await resp.text();
-    window._rawApiText = text;
-    const data = JSON.parse(text);
-
-    renderHonestSignResult(data, raw, eanFromGtin || gtin);
-
-  } catch(e) {
-    console.error('Честный знак API:', e);
-    if (e.name === 'AbortError') {
-      setStatus('⏱️ API не ответил за 8 сек. Введите EAN вручную.', 'err');
-      rescanBtn.classList.add('show');
-    } else {
-      renderHonestSignFallback(raw, gtin, eanFromGtin);
-    }
-  }
-}
-
-
-
-function extractGTIN(raw) {
-  // DataMatrix Честного знака: начинается с 01XXXXXXXXXXXXXXXX...
-  const m = raw.match(/^01(\d{14})/);
-  return m ? m[1] : null;
-}
-
-function renderHonestSignResult(data, raw, ean) {
-  const cd    = data.constructionData || {};
-  const cr    = data.codeResolveData  || {};
-  const cat   = (data.catalogData && data.catalogData[0]) || {};
-  const attrs = cat.good_attrs || [];
-
-  // ── constructionData ──
-  const name         = cd.productName    || data.productName || '—';
-  const brand        = cd.brand          || '—';
-  const country      = cd.country        || '';
-  const volume       = cd.volumeWeight   || '';
-  const kind         = cd.productKind    || '';
-  const tnvd         = cd.tnvd           || '';
-  const rawStatus    = cd.status         || '';
-  const cert         = cd.certDoc        || (cd.certDocList && cd.certDocList[0]) || null;
-  const gtin         = (cd.gtin || cr.gtin || extractGTIN(raw) || '').replace(/^0+/, '');
-
-  // Даты — timestamp в миллисекундах
-  const producedMs   = cd.producedDate   ? Number(cd.producedDate)   : null;
-  const introducedMs = cd.introducedDate ? Number(cd.introducedDate) : null;
-  // Срок годности — строка ISO
-  const expire       = cd.expirationDate || '';
-
-  // ── catalogData ──
-  // Производитель — attr_id 2503
-  const producerAttr = attrs.find(a => a.attr_id === 2503);
-  const producer     = producerAttr ? producerAttr.attr_value : '';
-  // Артикул поставщика — attr_id 13797
-  const artAttr      = attrs.find(a => a.attr_id === 13797);
-  const supplierArt  = artAttr ? artAttr.attr_value : '';
-  // ТУ/ГОСТ — attr_id 4404
-  const tuAttr    = attrs.find(a => a.attr_id === 4404);
-  const tuDoc     = tuAttr ? `${tuAttr.attr_value_type || ''} ${tuAttr.attr_value}`.trim() : '';
-  // Упаковка
-  const packAttr  = attrs.find(a => a.attr_id === 2710 && a.level === 'trade-unit');
-  const packType  = packAttr ? packAttr.attr_value : '';
-  const packMatAttr = attrs.find(a => a.attr_id === 2713 && a.level === 'trade-unit');
-  const packMat   = packMatAttr ? packMatAttr.attr_value : '';
-  const boxAttr   = attrs.find(a => a.attr_id === 2710 && a.level === 'inner-pack');
-  const boxQty    = boxAttr ? boxAttr.multiplier : '';
-  const boxGtin   = cat.identified_by
-    ? ((cat.identified_by.find(i => i.level === 'inner-pack') || {}).value || '')
-    : '';
-
-  // Статусы Честного знака с цветом и пояснением
-  const statusMap = {
-    INTRODUCED:    { icon: '✅', label: 'В обороте',              color: 'var(--green)',  note: 'Товар легально продаётся',                    ok: true  },
-    APPLIED:       { icon: '🟡', label: 'Код нанесён',            color: 'var(--orange)', note: 'Произведён, но ещё не введён в оборот',        ok: false },
-    EMITTED:       { icon: '🔵', label: 'Код выпущен',            color: 'var(--blue)',   note: 'Маркировка заказана, товар не произведён',     ok: false },
-    RETIRED:       { icon: '⛔', label: 'Выбыл из оборота',       color: 'var(--sub)',    note: 'Продан конечному покупателю или списан',       ok: false },
-    WRITTEN_OFF:   { icon: '⛔', label: 'Списан',                 color: 'var(--red)',    note: 'Утилизация, брак или уничтожение',             ok: false },
-    DISAGGREGATION:{ icon: '📦', label: 'Расформирован',          color: 'var(--sub)',    note: 'Групповая упаковка разобрана на штуки',        ok: false },
-    WITHDRAWN:     { icon: '⚠️', label: 'Отозван',               color: 'var(--red)',    note: 'Добровольный отзыв производителем',            ok: false },
-    RECALLED:      { icon: '🚨', label: 'Принудительный отзыв',  color: 'var(--red)',    note: 'Предписание надзорного органа',                ok: false },
-  };
-
-  const st       = statusMap[rawStatus] || { icon: '❓', label: rawStatus || 'Неизвестен', color: 'var(--sub)', note: '', ok: false };
-  const statusText = st.label;
-  const isOk       = st.ok;
-
-  const badge = '<div class="result-badge ' + (isOk ? 'badge-crpt' : rawStatus === 'APPLIED' || rawStatus === 'EMITTED' ? 'badge-warn' : 'badge-err') + '">'
-    + st.icon + ' Честный знак — ' + statusText + '</div>'
-    + (st.note ? '<div style="font-size:11px;color:' + st.color + ';margin-top:2px;font-weight:600">' + esc(st.note) + '</div>' : '');
-
-  function row(lbl, val) {
-    if (!val && val !== 0) return '';
-    return `<div class="divider"></div>
-    <div class="result-row">
-      <div class="lbl">${lbl}</div>
-      <div class="val">${val}</div>
-    </div>`;
-  }
-
-  let html = badge;
-
-  // Артикул — крупно вверху
-  if (supplierArt) html += `
-    <div class="result-row" style="margin-top:4px">
-      <div class="lbl">🔢 Артикул поставщика</div>
-      <div class="val big">${supplierArt}</div>
-    </div>`;
-
-  html += row('📦 Наименование', esc(name) + (kind ? ' (' + esc(kind) + ')' : ''));
-  html += row('🏷️ Бренд',              esc(brand));
-  html += row('🏭 Производитель',       esc(producer));
-  html += row('🌍 Страна производства', esc(country));
-  html += row('📐 Объём / вес',         esc(volume));
-
-  // Срок годности — красный если < 90 дней
-  if (expire) {
-    const expColor = isExpiringSoon(expire) ? 'var(--red)' : 'var(--green)';
-    const expStr   = formatDate(expire);
-    if (expStr) html += row('⏳ Срок годности',
-      '<span style="color:' + expColor + ';font-weight:700">' + esc(expStr) + '</span>');
-  }
-
-  // Даты из timestamp (миллисекунды → читаемая дата)
-  if (producedMs) {
-    const prodStr = formatTs(producedMs);
-    if (prodStr) html += row('🏗️ Дата производства', esc(prodStr));
-  }
-  if (introducedMs) {
-    const intrStr = formatTs(introducedMs);
-    if (intrStr) html += row('📅 Дата ввода в оборот', esc(intrStr));
-  }
-
-  // Упаковка
-  const packStr = [packType, packMat].filter(Boolean).join(' / ');
-  if (packStr) html += row('📦 Упаковка', esc(packStr));
-  if (boxQty)  html += row('📦 Короб',
-    esc(String(boxQty)) + ' шт' + (boxGtin ? ' · GTIN: ' + esc(boxGtin) : ''));
-
-  // Сертификат / СГР
-  if (cert && cert.number) {
-    const certTypeMap = { STATE_REGISTRATION_CERTIFICATE: 'СГР', DECLARATION: 'Декларация', CERTIFICATE: 'Сертификат' };
-    const certType = esc(certTypeMap[cert.certDocType] || cert.certDocType || 'Документ');
-    html += row('📄 ' + certType, esc(cert.number));
-  }
-
-  html += row('📋 ТНВЭД',    esc(tnvd));
-  html += row('📜 ТУ / ГОСТ', esc(tuDoc));
-  html += row('🔢 EAN / GTIN', esc(gtin));
-
-  resultCard.innerHTML = html;
-
-  // Для поиска в боте: приоритет артикул → EAN
-  scannedEAN = supplierArt || gtin || ean || '';
-  sendBtnEl.textContent = supplierArt
-    ? `📲 Найти артикул ${supplierArt} в боте`
-    : '📲 Отправить в бот';
-
-  sendBtnEl.classList.add('show');
-  rescanBtn.classList.add('show');
-  setStatus(isOk ? '✅ Товар верифицирован, в обороте' : '⚠️ ' + statusText, isOk ? 'ok' : 'err');
-}
-
-function formatTs(ms) {
-  if (!ms) return '';
-  try { return new Date(ms).toLocaleDateString('ru-RU'); } catch(_) { return ''; }
-}
-
-function isExpiringSoon(dateStr) {
-  try {
-    const exp = new Date(dateStr);
-    const now = new Date();
-    const days = (exp - now) / (1000 * 60 * 60 * 24);
-    return days < 90;
-  } catch(_) { return false; }
-}
-
-function renderHonestSignFallback(raw, gtin, ean) {
-  // API недоступен — показываем сырые данные из кода
-  const short = raw.length > 60 ? raw.substring(0, 60) + '…' : raw;
-  resultCard.innerHTML = `
-    <div class="result-badge badge-err">⚠️ API недоступен</div>
-    <div class="result-row">
-      <div class="lbl">Считанный код (DataMatrix)</div>
-      <div class="val" style="font-size:12px;word-break:break-all;color:var(--sub)">${short}</div>
-    </div>
-    ${gtin ? `<div class="divider"></div>
-    <div class="result-row">
-      <div class="lbl">GTIN из кода</div>
-      <div class="val">${gtin}</div>
-    </div>` : ''}
-    ${ean ? `<div class="divider"></div>
-    <div class="result-row">
-      <div class="lbl">EAN (для поиска в боте)</div>
-      <div class="val big">${ean}</div>
-    </div>` : ''}
-    <div class="result-row" style="margin-top:4px">
-      <div class="val" style="font-size:12px;color:var(--sub)">Сервер Честного знака не ответил. Попробуйте позже или отправьте EAN в бот.</div>
-    </div>`;
-
-  scannedEAN = ean || gtin || '';
-  if (scannedEAN) sendBtnEl.classList.add('show');
-  rescanBtn.classList.add('show');
-  setStatus('⚠️ API Честного знака недоступен', 'err');
-}
-
-function formatDate(d) {
-  if (!d) return '';
-  // YYYYMMDD или ISO
-  if (/^\d{8}$/.test(d)) return `${d.slice(6)}.${d.slice(4,6)}.${d.slice(0,4)}`;
-  try { return new Date(d).toLocaleDateString('ru-RU'); } catch(_) { return d; }
-}
-
-// ── Manual input ──────────────────────────────────────
-function submitManual() {
-  const val = document.getElementById('manual').value.trim();
-  if (!val) return;
-  if (scanActive && scanner) { scanActive = false; scanner.stop().catch(() => {}); }
-
-  if (currentMode === 'crpt') {
-    processHonestSign(val);
-  } else {
-    const ean = val.replace(/\D/g, '');
-    if (ean.length < 8) { setStatus('EAN должен содержать не менее 8 цифр', 'err'); return; }
-    showEANResult(ean);
-  }
-}
-
-// ── Send / copy ───────────────────────────────────────
-function sendToBot() {
-  if (!scannedEAN) return;
-  try { navigator.clipboard.writeText(scannedEAN).catch(() => {}); } catch(_) {}
-  document.getElementById('success-ean').textContent = scannedEAN;
-  document.getElementById('success').classList.add('show');
-}
-
-function openBot() {
-  window.open('https://vk.me/club' + VK_GROUP_ID, '_blank');
-}
-
-function copyAndConfirm() {
-  try {
-    navigator.clipboard.writeText(scannedEAN).then(() => {
-      const btn = document.getElementById('copy-again-btn');
-      btn.textContent = '✅ Скопировано!';
-      setTimeout(() => btn.textContent = '📋 Скопировать ещё раз', 1500);
-    }).catch(() => {});
-  } catch(_) {}
-}
-
-function copyEAN() { copyAndConfirm(); }
-
-// ── Reset ─────────────────────────────────────────────
-function rescan() {
-  scannedEAN = '';
-  resultCard.innerHTML = '';
-  resultCard.classList.remove('show');
-  sendBtnEl.classList.remove('show');
-  rescanBtn.classList.remove('show');
-  document.getElementById('manual').value = '';
-  setStatus('');
-  startBtn.style.display = 'block';
-}
-
-function resetAll() {
-  document.getElementById('success').classList.remove('show');
-  rescan();
-}
-
-document.getElementById('manual').addEventListener('keydown', e => {
-  if (e.key === 'Enter') submitManual();
-});
 </script>
+
 </body>
 </html>
