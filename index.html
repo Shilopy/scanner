@@ -71,6 +71,61 @@ html, body { background: var(--bg); color: var(--text);
   padding: 6px 10px; font-size: 13px; margin: 6px auto; display: block;
 }
 
+/* ── camera controls panel ── */
+#cam-controls {
+  display: none;
+  max-width: 480px; margin: 0 auto;
+  padding: 10px 18px 0;
+  flex-direction: column;
+  gap: 8px;
+}
+#cam-controls.show { display: flex; }
+
+.ctrl-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 10px 14px;
+}
+.ctrl-row label {
+  font-size: 12px; font-weight: 600; color: var(--sub);
+  min-width: 70px; white-space: nowrap;
+}
+.ctrl-row input[type=range] {
+  flex: 1; accent-color: var(--blue); height: 4px;
+  background: var(--border); border-radius: 4px;
+}
+.ctrl-row .ctrl-val {
+  font-size: 12px; font-weight: 700; color: var(--blue);
+  min-width: 34px; text-align: right;
+}
+
+/* torch button */
+#torch-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px 14px; border-radius: 12px;
+  background: var(--card); border: 1.5px solid var(--border);
+  color: var(--text); font-size: 13px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: all .15s;
+}
+#torch-btn.on {
+  background: rgba(251,191,36,.12);
+  border-color: #fbbf24; color: #fbbf24;
+}
+#torch-btn:active { opacity: .7; }
+
+/* settings toggle button */
+#settings-toggle {
+  display: none; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: 20px;
+  background: var(--card); border: 1.5px solid var(--border);
+  color: var(--sub); font-size: 12px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: all .15s; margin: 0 auto;
+}
+#settings-toggle.show { display: flex; }
+#settings-toggle.active { border-color: var(--blue); color: var(--blue); }
+
 /* ── bottom ── */
 .bottom { padding: 12px 18px 28px; display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin: 0 auto; }
 
@@ -190,6 +245,27 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 
 <div id="reader"></div>
 
+<!-- Settings toggle button -->
+<div style="display:flex;justify-content:center;padding:8px 18px 0;max-width:480px;margin:0 auto;">
+  <button id="settings-toggle" onclick="toggleSettings()">⚙️ Настройки камеры</button>
+</div>
+
+<!-- Camera controls panel -->
+<div id="cam-controls">
+  <!-- Zoom -->
+  <div class="ctrl-row" id="zoom-row" style="display:none">
+    <label>🔍 Зум</label>
+    <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1"
+           oninput="applyZoom(this.value)">
+    <span class="ctrl-val" id="zoom-val">1×</span>
+  </div>
+
+  <!-- Torch -->
+  <button id="torch-btn" onclick="toggleTorch()" style="display:none">
+    🔦 Фонарик выключен
+  </button>
+</div>
+
 <div class="bottom">
   <div id="status">Нажмите кнопку для запуска камеры</div>
 
@@ -251,10 +327,15 @@ async function fetchWithTimeout(url, options = {}, ms = 8000) {
   }
 }
 
-let scanner    = null;
-let scanActive = false;
-let scannedEAN = '';       // код для отправки в бот
-let currentMode = 'ean';  // 'ean' | 'crpt'
+let scanner     = null;
+let scanActive  = false;
+let scannedEAN  = '';
+let currentMode = 'ean';
+let torchOn     = false;
+let torchSupported = false;
+let zoomSupported  = false;
+let currentStream  = null;
+let settingsOpen   = false;
 
 const statusEl   = document.getElementById('status');
 const startBtn   = document.getElementById('start-btn');
@@ -297,6 +378,22 @@ function setStatus(msg, cls = '') {
   statusEl.className = cls;
 }
 
+// ── Settings panel toggle ────────────────────────
+function toggleSettings() {
+  settingsOpen = !settingsOpen;
+  const panel  = document.getElementById('cam-controls');
+  const btn    = document.getElementById('settings-toggle');
+  if (settingsOpen) {
+    panel.classList.add('show');
+    btn.classList.add('active');
+    btn.textContent = '⚙️ Скрыть настройки';
+  } else {
+    panel.classList.remove('show');
+    btn.classList.remove('active');
+    btn.textContent = '⚙️ Настройки камеры';
+  }
+}
+
 // ── Mode switch ──────────────────────────────────────
 function switchMode(mode) {
   currentMode = mode;
@@ -304,16 +401,105 @@ function switchMode(mode) {
   document.getElementById('tab-crpt').classList.toggle('active', mode === 'crpt');
   document.getElementById('manual').placeholder =
     mode === 'ean' ? 'Введите EAN вручную' : 'Вставьте код DataMatrix';
-  // restart scanner with correct formats
   if (scanActive && scanner) {
     scanActive = false;
     scanner.stop().then(() => { scanner = null; startScanner(); }).catch(() => { scanner = null; startScanner(); });
   }
 }
 
+// ── Get video track for advanced controls ────────
+function getVideoTrack() {
+  try {
+    const video = document.querySelector('#reader video');
+    if (!video || !video.srcObject) return null;
+    const tracks = video.srcObject.getVideoTracks();
+    return tracks.length ? tracks[0] : null;
+  } catch(_) { return null; }
+}
+
+// ── Zoom ─────────────────────────────────────────
+function applyZoom(val) {
+  val = parseFloat(val);
+  document.getElementById('zoom-val').textContent = val.toFixed(1) + '×';
+  const track = getVideoTrack();
+  if (!track) return;
+  try {
+    const caps = track.getCapabilities();
+    if (caps.zoom) {
+      // Clamp to actual camera range
+      const zMin = caps.zoom.min || 1;
+      const zMax = caps.zoom.max || 5;
+      const zVal = Math.min(Math.max(val, zMin), zMax);
+      track.applyConstraints({ advanced: [{ zoom: zVal }] }).catch(() => {});
+    }
+  } catch(_) {}
+}
+
+// ── Torch ─────────────────────────────────────────
+async function toggleTorch() {
+  const track = getVideoTrack();
+  if (!track) return;
+  try {
+    torchOn = !torchOn;
+    await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+    const btn = document.getElementById('torch-btn');
+    btn.textContent = torchOn ? '🔦 Фонарик включён' : '🔦 Фонарик выключен';
+    btn.classList.toggle('on', torchOn);
+  } catch(e) {
+    torchOn = false;
+    console.warn('Torch not supported:', e);
+  }
+}
+
+// ── Probe camera capabilities after start ────────
+function probeCapabilities() {
+  setTimeout(() => {
+    const track = getVideoTrack();
+    if (!track) return;
+    try {
+      const caps = track.getCapabilities();
+
+      // Zoom
+      if (caps.zoom) {
+        zoomSupported = true;
+        const slider = document.getElementById('zoom-slider');
+        slider.min   = caps.zoom.min   || 1;
+        slider.max   = caps.zoom.max   || 5;
+        slider.step  = caps.zoom.step  || 0.1;
+        slider.value = 1;
+        document.getElementById('zoom-row').style.display = 'flex';
+      }
+
+      // Torch
+      if (caps.torch) {
+        torchSupported = true;
+        document.getElementById('torch-btn').style.display = 'flex';
+      }
+
+      // Show settings toggle if anything is available
+      if (zoomSupported || torchSupported) {
+        document.getElementById('settings-toggle').classList.add('show');
+      }
+
+      // Auto-apply continuous autofocus
+      if (caps.focusMode && caps.focusMode.includes('continuous')) {
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+      }
+
+    } catch(e) {
+      console.log('Capability probe error:', e);
+    }
+  }, 800); // wait for stream to stabilize
+}
+
 // ── Scanner ──────────────────────────────────────────
 async function startScanner() {
   startBtn.style.display = 'none';
+  torchOn = false;
+  const torchBtn = document.getElementById('torch-btn');
+  torchBtn.textContent = '🔦 Фонарик выключен';
+  torchBtn.classList.remove('on');
+
   setStatus('Запрашиваю доступ к камере…');
 
   const eanFormats = [
@@ -331,22 +517,53 @@ async function startScanner() {
     Html5QrcodeSupportedFormats.CODE_128,
   ];
 
+  // ─────────────────────────────────────────────────────────
+  // videoConstraints — ключ к качественному чтению 15×15 мм!
+  // Запрашиваем максимально доступное разрешение + автофокус
+  // ─────────────────────────────────────────────────────────
+  const videoConstraints = {
+    facingMode:  { ideal: 'environment' },
+    width:       { ideal: 3840, min: 1280 },   // 4K → fallback 1080p → 720p
+    height:      { ideal: 2160, min: 720  },
+    focusMode:   { ideal: 'continuous' },        // непрерывный автофокус
+    frameRate:   { ideal: 30, min: 15 },
+    // Дополнительные hints для макро-фокуса:
+    zoom:        { ideal: 1 },                   // старт без зума, юзер сам докрутит
+  };
+
+  // Уменьшаем область сканирования — меньший бокс = быстрее и точнее
+  // для мелких кодов 15×15 мм
+  const qrboxEan  = { width: 220, height: 80  };  // было 260×100
+  const qrboxCrpt = { width: 180, height: 180 };  // было 220×220
+
   try {
-    scanner = new Html5Qrcode('reader');
+    scanner = new Html5Qrcode('reader', {
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true  // Chrome BarcodeDetector API — быстрее и точнее
+      },
+      verbose: false,
+    });
+
     await scanner.start(
-      { facingMode: 'environment' },
+      videoConstraints,
       {
-        fps: 15,
-        qrbox: currentMode === 'ean'
-          ? { width: 260, height: 100 }
-          : { width: 220, height: 220 },
+        fps: 30,               // Увеличиваем до 30 кадров
+        qrbox: currentMode === 'ean' ? qrboxEan : qrboxCrpt,
         aspectRatio: currentMode === 'ean' ? 1.7 : 1.0,
         formatsToSupport: currentMode === 'ean' ? eanFormats : crptFormats,
+        disableFlip: false,    // разрешить зеркальные коды
       },
       onScanSuccess,
       () => {}
     );
+
     scanActive = true;
+
+    // После запуска — пробуем применить расширенные ограничения напрямую
+    // через MediaStreamTrack для надёжного автофокуса и резкости
+    applyAdvancedCameraSettings();
+    probeCapabilities();
+
     setStatus(currentMode === 'ean'
       ? 'Наведите камеру на штрих-код…'
       : 'Наведите камеру на квадратный код DataMatrix…');
@@ -361,6 +578,54 @@ async function startScanner() {
   }
 }
 
+// ── Применяем расширенные настройки через track.applyConstraints ──
+function applyAdvancedCameraSettings() {
+  setTimeout(() => {
+    const track = getVideoTrack();
+    if (!track) return;
+    try {
+      const caps = track.getCapabilities();
+      const advanced = [];
+
+      // Непрерывный автофокус
+      if (caps.focusMode) {
+        if (caps.focusMode.includes('continuous')) {
+          advanced.push({ focusMode: 'continuous' });
+        }
+      }
+      // Фокусное расстояние — по возможности ближний диапазон
+      if (caps.focusDistance) {
+        // Ставим фокус в зону 5–15 см (мелкие коды на близком расстоянии)
+        const near = caps.focusDistance.min || 0;
+        const fd   = Math.max(near, Math.min(0.15, (caps.focusDistance.max || 1) * 0.2));
+        advanced.push({ focusDistance: fd });
+      }
+      // Максимальная резкость
+      if (caps.sharpness) {
+        advanced.push({ sharpness: caps.sharpness.max });
+      }
+      // Минимальный ISO (уменьшает шум)
+      if (caps.iso) {
+        advanced.push({ iso: caps.iso.min });
+      }
+      // Максимальная экспозиция для чёткости
+      if (caps.exposureMode && caps.exposureMode.includes('continuous')) {
+        advanced.push({ exposureMode: 'continuous' });
+      }
+      // Баланс белого
+      if (caps.whiteBalanceMode && caps.whiteBalanceMode.includes('continuous')) {
+        advanced.push({ whiteBalanceMode: 'continuous' });
+      }
+
+      if (advanced.length) {
+        track.applyConstraints({ advanced }).catch(e => console.log('Advanced constraints:', e));
+      }
+    } catch(e) {
+      console.log('Advanced settings error:', e);
+    }
+  }, 1200);
+}
+
 let lastScan = 0;
 function onScanSuccess(raw) {
   if (!scanActive) return;
@@ -369,6 +634,15 @@ function onScanSuccess(raw) {
   lastScan = now;
   scanActive = false;
   scanner.stop().catch(() => {});
+
+  // Выключаем фонарик при успехе
+  if (torchOn) {
+    const track = getVideoTrack();
+    if (track) track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+    torchOn = false;
+    document.getElementById('torch-btn').classList.remove('on');
+  }
+
   try { navigator.vibrate?.(120); } catch(_) {}
 
   if (currentMode === 'crpt') {
@@ -408,13 +682,10 @@ async function processHonestSign(raw) {
   resultCard.innerHTML = `<div style="text-align:center;padding:16px;color:var(--sub)">⏳ Загрузка…</div>`;
   resultCard.classList.add('show');
 
-  // Из DataMatrix кода Честного знака извлекаем GTIN (первые 14 цифр после 01)
   const gtin = extractGTIN(raw);
-  // Для отправки в бот берём EAN (убираем ведущий ноль из GTIN)
   const eanFromGtin = gtin ? gtin.replace(/^0+/, '') : '';
 
   try {
-    // Публичное API Честного знака — проверка кода
     const encoded = encodeURIComponent(raw);
     const url = `https://mobile.api.crpt.ru/mobile/check?code=${encoded}`;
 
@@ -440,10 +711,7 @@ async function processHonestSign(raw) {
   }
 }
 
-
-
 function extractGTIN(raw) {
-  // DataMatrix Честного знака: начинается с 01XXXXXXXXXXXXXXXX...
   const m = raw.match(/^01(\d{14})/);
   return m ? m[1] : null;
 }
@@ -454,7 +722,6 @@ function renderHonestSignResult(data, raw, ean) {
   const cat   = (data.catalogData && data.catalogData[0]) || {};
   const attrs = cat.good_attrs || [];
 
-  // ── constructionData ──
   const name         = cd.productName    || data.productName || '—';
   const brand        = cd.brand          || '—';
   const country      = cd.country        || '';
@@ -465,34 +732,26 @@ function renderHonestSignResult(data, raw, ean) {
   const cert         = cd.certDoc        || (cd.certDocList && cd.certDocList[0]) || null;
   const gtin         = (cd.gtin || cr.gtin || extractGTIN(raw) || '').replace(/^0+/, '');
 
-  // Даты — timestamp в миллисекундах
   const producedMs   = cd.producedDate   ? Number(cd.producedDate)   : null;
   const introducedMs = cd.introducedDate ? Number(cd.introducedDate) : null;
-  // Срок годности — строка ISO
   const expire       = cd.expirationDate || '';
 
-  // ── catalogData ──
-  // Производитель — attr_id 2503
   const producerAttr = attrs.find(a => a.attr_id === 2503);
   const producer     = producerAttr ? producerAttr.attr_value : '';
-  // Артикул поставщика — attr_id 13797
   const artAttr      = attrs.find(a => a.attr_id === 13797);
   const supplierArt  = artAttr ? artAttr.attr_value : '';
-  // ТУ/ГОСТ — attr_id 4404
-  const tuAttr    = attrs.find(a => a.attr_id === 4404);
-  const tuDoc     = tuAttr ? `${tuAttr.attr_value_type || ''} ${tuAttr.attr_value}`.trim() : '';
-  // Упаковка
-  const packAttr  = attrs.find(a => a.attr_id === 2710 && a.level === 'trade-unit');
-  const packType  = packAttr ? packAttr.attr_value : '';
-  const packMatAttr = attrs.find(a => a.attr_id === 2713 && a.level === 'trade-unit');
-  const packMat   = packMatAttr ? packMatAttr.attr_value : '';
-  const boxAttr   = attrs.find(a => a.attr_id === 2710 && a.level === 'inner-pack');
-  const boxQty    = boxAttr ? boxAttr.multiplier : '';
-  const boxGtin   = cat.identified_by
+  const tuAttr       = attrs.find(a => a.attr_id === 4404);
+  const tuDoc        = tuAttr ? `${tuAttr.attr_value_type || ''} ${tuAttr.attr_value}`.trim() : '';
+  const packAttr     = attrs.find(a => a.attr_id === 2710 && a.level === 'trade-unit');
+  const packType     = packAttr ? packAttr.attr_value : '';
+  const packMatAttr  = attrs.find(a => a.attr_id === 2713 && a.level === 'trade-unit');
+  const packMat      = packMatAttr ? packMatAttr.attr_value : '';
+  const boxAttr      = attrs.find(a => a.attr_id === 2710 && a.level === 'inner-pack');
+  const boxQty       = boxAttr ? boxAttr.multiplier : '';
+  const boxGtin      = cat.identified_by
     ? ((cat.identified_by.find(i => i.level === 'inner-pack') || {}).value || '')
     : '';
 
-  // Статусы Честного знака с цветом и пояснением
   const statusMap = {
     INTRODUCED:    { icon: '✅', label: 'В обороте',              color: 'var(--green)',  note: 'Товар легально продаётся',                    ok: true  },
     APPLIED:       { icon: '🟡', label: 'Код нанесён',            color: 'var(--orange)', note: 'Произведён, но ещё не введён в оборот',        ok: false },
@@ -523,7 +782,6 @@ function renderHonestSignResult(data, raw, ean) {
 
   let html = badge;
 
-  // Артикул — крупно вверху
   if (supplierArt) html += `
     <div class="result-row" style="margin-top:4px">
       <div class="lbl">🔢 Артикул поставщика</div>
@@ -536,7 +794,6 @@ function renderHonestSignResult(data, raw, ean) {
   html += row('🌍 Страна производства', esc(country));
   html += row('📐 Объём / вес',         esc(volume));
 
-  // Срок годности — красный если < 90 дней
   if (expire) {
     const expColor = isExpiringSoon(expire) ? 'var(--red)' : 'var(--green)';
     const expStr   = formatDate(expire);
@@ -544,7 +801,6 @@ function renderHonestSignResult(data, raw, ean) {
       '<span style="color:' + expColor + ';font-weight:700">' + esc(expStr) + '</span>');
   }
 
-  // Даты из timestamp (миллисекунды → читаемая дата)
   if (producedMs) {
     const prodStr = formatTs(producedMs);
     if (prodStr) html += row('🏗️ Дата производства', esc(prodStr));
@@ -554,13 +810,11 @@ function renderHonestSignResult(data, raw, ean) {
     if (intrStr) html += row('📅 Дата ввода в оборот', esc(intrStr));
   }
 
-  // Упаковка
   const packStr = [packType, packMat].filter(Boolean).join(' / ');
   if (packStr) html += row('📦 Упаковка', esc(packStr));
   if (boxQty)  html += row('📦 Короб',
     esc(String(boxQty)) + ' шт' + (boxGtin ? ' · GTIN: ' + esc(boxGtin) : ''));
 
-  // Сертификат / СГР
   if (cert && cert.number) {
     const certTypeMap = { STATE_REGISTRATION_CERTIFICATE: 'СГР', DECLARATION: 'Декларация', CERTIFICATE: 'Сертификат' };
     const certType = esc(certTypeMap[cert.certDocType] || cert.certDocType || 'Документ');
@@ -573,7 +827,6 @@ function renderHonestSignResult(data, raw, ean) {
 
   resultCard.innerHTML = html;
 
-  // Для поиска в боте: приоритет артикул → EAN
   scannedEAN = supplierArt || gtin || ean || '';
   sendBtnEl.textContent = supplierArt
     ? `📲 Найти артикул ${supplierArt} в боте`
@@ -599,7 +852,6 @@ function isExpiringSoon(dateStr) {
 }
 
 function renderHonestSignFallback(raw, gtin, ean) {
-  // API недоступен — показываем сырые данные из кода
   const short = raw.length > 60 ? raw.substring(0, 60) + '…' : raw;
   resultCard.innerHTML = `
     <div class="result-badge badge-err">⚠️ API недоступен</div>
@@ -629,7 +881,6 @@ function renderHonestSignFallback(raw, gtin, ean) {
 
 function formatDate(d) {
   if (!d) return '';
-  // YYYYMMDD или ISO
   if (/^\d{8}$/.test(d)) return `${d.slice(6)}.${d.slice(4,6)}.${d.slice(0,4)}`;
   try { return new Date(d).toLocaleDateString('ru-RU'); } catch(_) { return d; }
 }
