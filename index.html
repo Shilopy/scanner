@@ -55,15 +55,26 @@ html, body { background: var(--bg); color: var(--text);
 }
 .tab.active { border-color: var(--blue); color: var(--blue); background: rgba(91,156,246,.1); }
 
+/* ── camera wrapper — скрывается после скана ── */
+#camera-wrap {
+  max-width: 480px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 0;
+  transition: all .3s ease;
+}
+#camera-wrap.hidden {
+  display: none;
+}
+
 /* ── reader ── */
 #reader {
-  width: 100%; max-width: 480px; margin: 0 auto;
+  width: 100%;
   border-radius: 14px; overflow: hidden; background: #000;
   border: 1px solid var(--border);
   height: min(100vw, 480px);
   max-height: 480px;
   position: relative;
 }
+/* Видео внутри — заполняет контейнер, не вылезает за него */
 #reader video {
   width: 100% !important;
   height: 100% !important;
@@ -71,6 +82,7 @@ html, body { background: var(--bg); color: var(--text);
   position: absolute !important;
   top: 0 !important; left: 0 !important;
 }
+/* Оверлей с рамкой сканирования тоже растягиваем */
 #reader > div:first-of-type {
   width: 100% !important;
   height: 100% !important;
@@ -78,11 +90,32 @@ html, body { background: var(--bg); color: var(--text);
   top: 0 !important; left: 0 !important;
 }
 
+/* ── кнопка остановки камеры ── */
+#stop-btn {
+  display: none; width: 100%; padding: 10px;
+  border-radius: 0 0 14px 14px;
+  border: 1px solid var(--border); border-top: none;
+  background: var(--card); color: var(--sub);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .15s;
+}
+#stop-btn.show { display: block; }
+#stop-btn:active { opacity: .7; }
+#reader__dashboard_section_swaplink,
+#reader__status_span,
+#reader__header_message { display: none !important; }
+#reader img { display: none; }
+#reader select {
+  background: var(--card); color: var(--text);
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; font-size: 13px; margin: 6px auto; display: block;
+}
+
 /* ── scan controls — появляются под камерой во время сканирования ── */
 #scan-controls {
   display: none;
-  max-width: 480px; margin: 0 auto;
-  padding: 8px 12px 0;
+  padding: 8px 12px 4px;
   flex-direction: column;
   gap: 7px;
 }
@@ -188,6 +221,11 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 #result-card {
   display: none; background: var(--card); border: 1.5px solid var(--border);
   border-radius: 12px; padding: 14px 16px; flex-direction: column; gap: 6px;
+  animation: fadeUp .3s ease;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 #result-card.show { display: flex; }
 .result-badge {
@@ -275,7 +313,9 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
   <div class="tab" id="tab-crpt" onclick="switchMode('crpt')">✅ Честный знак</div>
 </div>
 
+<div id="camera-wrap" class="hidden">
 <div id="reader"></div>
+<button id="stop-btn" onclick="stopCamera()">✕ Закрыть камеру</button>
 
 <!-- Scan controls: zoom + torch — показываются сразу после старта камеры -->
 <div id="scan-controls">
@@ -299,6 +339,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
   </div>
 
   <div id="zoom-unavail">Зум недоступен на этом устройстве</div>
+</div>
 </div>
 
 <div class="bottom">
@@ -542,9 +583,34 @@ function probeCapabilities() {
   }, 900);
 }
 
+// ── Stop camera manually ──────────────────────────
+async function stopCamera() {
+  if (scanner) {
+    scanActive = false;
+    try { await scanner.stop(); } catch(_) {}
+    scanner = null;
+  }
+  if (torchOn) torchOn = false;
+  hideCameraWrap();
+  setStatus('');
+  startBtn.style.display = 'block';
+}
+
+function showCameraWrap() {
+  document.getElementById('camera-wrap').classList.remove('hidden');
+  document.getElementById('stop-btn').classList.add('show');
+}
+
+function hideCameraWrap() {
+  document.getElementById('camera-wrap').classList.add('hidden');
+  document.getElementById('stop-btn').classList.remove('show');
+  document.getElementById('scan-controls').classList.remove('show');
+}
+
 // ── Scanner ──────────────────────────────────────────
 async function startScanner() {
   startBtn.style.display = 'none';
+  showCameraWrap();
   torchOn = false;
   zoomSupported = false;
   currentZoom = 1;
@@ -596,15 +662,16 @@ async function startScanner() {
     frameRate:  { ideal: 30 },
   };
 
-  // Уменьшаем область сканирования — меньший бокс = быстрее и точнее
-  // для мелких кодов 15×15 мм
-  const qrboxEan  = { width: 220, height: 80  };  // было 260×100
-  const qrboxCrpt = { width: 180, height: 180 };  // было 220×220
+  // Одинаковый квадратный формат для обоих режимов —
+  // влезает на экран вместе с панелью зума/фонарика без скролла.
+  // Для EAN широкий бокс внутри квадратного окна.
+  const qrboxEan  = { width: 220, height: 80  };
+  const qrboxCrpt = { width: 200, height: 200 };
 
   const scanConfig = {
     fps: 30,
     qrbox: currentMode === 'ean' ? qrboxEan : qrboxCrpt,
-    aspectRatio: 1.0,
+    aspectRatio: 1.0,   // квадрат для обоих режимов — окно одинакового размера
     formatsToSupport: currentMode === 'ean' ? eanFormats : crptFormats,
     disableFlip: false,
   };
@@ -710,13 +777,9 @@ function onScanSuccess(raw) {
   scanActive = false;
   scanner.stop().catch(() => {});
 
-  // Выключаем фонарик и скрываем контролы
-  if (torchOn) {
-    const track = getVideoTrack();
-    if (track) track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
-    torchOn = false;
-  }
-  document.getElementById('scan-controls').classList.remove('show');
+  // Прячем камеру и контролы — показываем результат
+  hideCameraWrap();
+  document.getElementById('stop-btn').classList.remove('show');
 
   try { navigator.vibrate?.(120); } catch(_) {}
 
@@ -1007,7 +1070,7 @@ function rescan() {
   sendBtnEl.classList.remove('show');
   rescanBtn.classList.remove('show');
   document.getElementById('manual').value = '';
-  document.getElementById('scan-controls').classList.remove('show');
+  hideCameraWrap();
   setStatus('');
   startBtn.style.display = 'block';
 }
