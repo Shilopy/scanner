@@ -518,17 +518,16 @@ async function startScanner() {
   ];
 
   // ─────────────────────────────────────────────────────────
-  // videoConstraints — ключ к качественному чтению 15×15 мм!
-  // Запрашиваем максимально доступное разрешение + автофокус
+  // videoConstraints — только безопасные параметры!
+  // focusMode/zoom нельзя в основных constraints — только в advanced,
+  // иначе OverconstrainedError на большинстве браузеров.
+  // Разрешение: ideal без min — не блокирует старые устройства.
   // ─────────────────────────────────────────────────────────
   const videoConstraints = {
-    facingMode:  { ideal: 'environment' },
-    width:       { ideal: 3840, min: 1280 },   // 4K → fallback 1080p → 720p
-    height:      { ideal: 2160, min: 720  },
-    focusMode:   { ideal: 'continuous' },        // непрерывный автофокус
-    frameRate:   { ideal: 30, min: 15 },
-    // Дополнительные hints для макро-фокуса:
-    zoom:        { ideal: 1 },                   // старт без зума, юзер сам докрутит
+    facingMode: { ideal: 'environment' },
+    width:      { ideal: 3840 },   // 4K если есть, иначе максимум что есть
+    height:     { ideal: 2160 },
+    frameRate:  { ideal: 30 },
   };
 
   // Уменьшаем область сканирования — меньший бокс = быстрее и точнее
@@ -536,46 +535,56 @@ async function startScanner() {
   const qrboxEan  = { width: 220, height: 80  };  // было 260×100
   const qrboxCrpt = { width: 180, height: 180 };  // было 220×220
 
-  try {
+  const scanConfig = {
+    fps: 30,
+    qrbox: currentMode === 'ean' ? qrboxEan : qrboxCrpt,
+    aspectRatio: currentMode === 'ean' ? 1.7 : 1.0,
+    formatsToSupport: currentMode === 'ean' ? eanFormats : crptFormats,
+    disableFlip: false,
+  };
+
+  async function tryStart(constraints) {
     scanner = new Html5Qrcode('reader', {
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true  // Chrome BarcodeDetector API — быстрее и точнее
-      },
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
       verbose: false,
     });
-
-    await scanner.start(
-      videoConstraints,
-      {
-        fps: 30,               // Увеличиваем до 30 кадров
-        qrbox: currentMode === 'ean' ? qrboxEan : qrboxCrpt,
-        aspectRatio: currentMode === 'ean' ? 1.7 : 1.0,
-        formatsToSupport: currentMode === 'ean' ? eanFormats : crptFormats,
-        disableFlip: false,    // разрешить зеркальные коды
-      },
-      onScanSuccess,
-      () => {}
-    );
-
-    scanActive = true;
-
-    // После запуска — пробуем применить расширенные ограничения напрямую
-    // через MediaStreamTrack для надёжного автофокуса и резкости
-    applyAdvancedCameraSettings();
-    probeCapabilities();
-
-    setStatus(currentMode === 'ean'
-      ? 'Наведите камеру на штрих-код…'
-      : 'Наведите камеру на квадратный код DataMatrix…');
-  } catch(e) {
-    startBtn.style.display = 'block';
-    if (/NotAllowed|Permission/i.test(e.toString()))
-      setStatus('⛔ Доступ к камере запрещён. Разрешите в настройках браузера.', 'err');
-    else if (/NotFound/i.test(e.toString()))
-      setStatus('📵 Камера не найдена. Введите код вручную.', 'err');
-    else
-      setStatus('❌ Не удалось запустить камеру. Введите код вручную.', 'err');
+    await scanner.start(constraints, scanConfig, onScanSuccess, () => {});
   }
+
+  try {
+    // Попытка 1: высокое разрешение
+    await tryStart(videoConstraints);
+  } catch(e1) {
+    console.warn('First attempt failed:', e1, '— retrying with minimal constraints');
+    // Попытка 2: минимальные constraints — просто задняя камера
+    try {
+      if (scanner) { try { await scanner.stop(); } catch(_) {} scanner = null; }
+      await tryStart({ facingMode: 'environment' });
+    } catch(e2) {
+      console.warn('Second attempt failed:', e2, '— retrying without facingMode');
+      // Попытка 3: вообще без ограничений
+      try {
+        if (scanner) { try { await scanner.stop(); } catch(_) {} scanner = null; }
+        await tryStart(true); // true = любая камера
+      } catch(e3) {
+        startBtn.style.display = 'block';
+        if (/NotAllowed|Permission/i.test(e3.toString()))
+          setStatus('⛔ Доступ к камере запрещён. Разрешите в настройках браузера.', 'err');
+        else if (/NotFound/i.test(e3.toString()))
+          setStatus('📵 Камера не найдена. Введите код вручную.', 'err');
+        else
+          setStatus('❌ Не удалось запустить камеру: ' + e3.message, 'err');
+        return;
+      }
+    }
+  }
+
+  scanActive = true;
+  applyAdvancedCameraSettings();
+  probeCapabilities();
+  setStatus(currentMode === 'ean'
+    ? 'Наведите камеру на штрих-код…'
+    : 'Наведите камеру на квадратный код DataMatrix…');
 }
 
 // ── Применяем расширенные настройки через track.applyConstraints ──
