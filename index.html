@@ -71,60 +71,85 @@ html, body { background: var(--bg); color: var(--text);
   padding: 6px 10px; font-size: 13px; margin: 6px auto; display: block;
 }
 
-/* ── camera controls panel ── */
-#cam-controls {
+/* ── scan controls — появляются под камерой во время сканирования ── */
+#scan-controls {
   display: none;
   max-width: 480px; margin: 0 auto;
-  padding: 10px 18px 0;
+  padding: 8px 12px 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
-#cam-controls.show { display: flex; }
+#scan-controls.show { display: flex; }
 
-.ctrl-row {
+/* строка зума */
+.zoom-bar {
   display: flex; align-items: center; gap: 10px;
   background: var(--card); border: 1.5px solid var(--border);
-  border-radius: 12px; padding: 10px 14px;
+  border-radius: 12px; padding: 9px 14px;
 }
-.ctrl-row label {
-  font-size: 12px; font-weight: 600; color: var(--sub);
-  min-width: 70px; white-space: nowrap;
+.zoom-bar .zoom-icon { font-size: 15px; line-height: 1; }
+.zoom-bar input[type=range] {
+  flex: 1;
+  -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 4px;
+  background: var(--border);
+  accent-color: var(--blue);
+  outline: none; cursor: pointer;
 }
-.ctrl-row input[type=range] {
-  flex: 1; accent-color: var(--blue); height: 4px;
-  background: var(--border); border-radius: 4px;
+.zoom-bar input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--blue); cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(91,156,246,.25);
 }
-.ctrl-row .ctrl-val {
+.zoom-bar .zoom-val {
   font-size: 12px; font-weight: 700; color: var(--blue);
   min-width: 34px; text-align: right;
 }
 
-/* torch button */
+/* строка фонарика + кнопки быстрого зума */
+.cam-row {
+  display: flex; gap: 7px;
+}
+/* кнопка фонарика */
 #torch-btn {
+  flex: 1;
   display: flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 10px 14px; border-radius: 12px;
+  padding: 10px 12px; border-radius: 12px;
   background: var(--card); border: 1.5px solid var(--border);
   color: var(--text); font-size: 13px; font-weight: 600;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  transition: all .15s;
+  transition: all .2s;
 }
 #torch-btn.on {
-  background: rgba(251,191,36,.12);
+  background: rgba(251,191,36,.15);
   border-color: #fbbf24; color: #fbbf24;
 }
 #torch-btn:active { opacity: .7; }
 
-/* settings toggle button */
-#settings-toggle {
-  display: none; align-items: center; gap: 6px;
-  padding: 7px 13px; border-radius: 20px;
-  background: var(--card); border: 1.5px solid var(--border);
-  color: var(--sub); font-size: 12px; font-weight: 600;
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
-  transition: all .15s; margin: 0 auto;
+/* кнопки быстрого пресета зума */
+.zoom-presets {
+  display: flex; gap: 5px;
 }
-#settings-toggle.show { display: flex; }
-#settings-toggle.active { border-color: var(--blue); color: var(--blue); }
+.zoom-preset {
+  padding: 10px 10px; border-radius: 10px;
+  background: var(--card); border: 1.5px solid var(--border);
+  color: var(--sub); font-size: 12px; font-weight: 700;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: all .15s; white-space: nowrap;
+  min-width: 42px; text-align: center;
+}
+.zoom-preset.active {
+  border-color: var(--blue); color: var(--blue);
+  background: rgba(91,156,246,.1);
+}
+.zoom-preset:active { opacity: .7; }
+
+/* плашка «зум недоступен» */
+#zoom-unavail {
+  display: none; text-align: center;
+  font-size: 11px; color: var(--sub); padding: 4px 0;
+}
 
 /* ── bottom ── */
 .bottom { padding: 12px 18px 28px; display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin: 0 auto; }
@@ -245,25 +270,28 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 
 <div id="reader"></div>
 
-<!-- Settings toggle button -->
-<div style="display:flex;justify-content:center;padding:8px 18px 0;max-width:480px;margin:0 auto;">
-  <button id="settings-toggle" onclick="toggleSettings()">⚙️ Настройки камеры</button>
-</div>
+<!-- Scan controls: zoom + torch — показываются сразу после старта камеры -->
+<div id="scan-controls">
 
-<!-- Camera controls panel -->
-<div id="cam-controls">
-  <!-- Zoom -->
-  <div class="ctrl-row" id="zoom-row" style="display:none">
-    <label>🔍 Зум</label>
+  <!-- Зум: ползунок -->
+  <div class="zoom-bar" id="zoom-bar" style="display:none">
+    <span class="zoom-icon">🔍</span>
     <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1"
            oninput="applyZoom(this.value)">
-    <span class="ctrl-val" id="zoom-val">1×</span>
+    <span class="zoom-val" id="zoom-val">1×</span>
   </div>
 
-  <!-- Torch -->
-  <button id="torch-btn" onclick="toggleTorch()" style="display:none">
-    🔦 Фонарик выключен
-  </button>
+  <!-- Фонарик + быстрые пресеты зума -->
+  <div class="cam-row" id="cam-row" style="display:none">
+    <button id="torch-btn" onclick="toggleTorch()">🔦 Фонарик</button>
+    <div class="zoom-presets" id="zoom-presets" style="display:none">
+      <button class="zoom-preset active" onclick="setZoomPreset(1)">1×</button>
+      <button class="zoom-preset" onclick="setZoomPreset(2)">2×</button>
+      <button class="zoom-preset" onclick="setZoomPreset(3)">3×</button>
+    </div>
+  </div>
+
+  <div id="zoom-unavail">Зум недоступен на этом устройстве</div>
 </div>
 
 <div class="bottom">
@@ -334,8 +362,7 @@ let currentMode = 'ean';
 let torchOn     = false;
 let torchSupported = false;
 let zoomSupported  = false;
-let currentStream  = null;
-let settingsOpen   = false;
+let currentZoom    = 1;
 
 const statusEl   = document.getElementById('status');
 const startBtn   = document.getElementById('start-btn');
@@ -378,22 +405,6 @@ function setStatus(msg, cls = '') {
   statusEl.className = cls;
 }
 
-// ── Settings panel toggle ────────────────────────
-function toggleSettings() {
-  settingsOpen = !settingsOpen;
-  const panel  = document.getElementById('cam-controls');
-  const btn    = document.getElementById('settings-toggle');
-  if (settingsOpen) {
-    panel.classList.add('show');
-    btn.classList.add('active');
-    btn.textContent = '⚙️ Скрыть настройки';
-  } else {
-    panel.classList.remove('show');
-    btn.classList.remove('active');
-    btn.textContent = '⚙️ Настройки камеры';
-  }
-}
-
 // ── Mode switch ──────────────────────────────────────
 function switchMode(mode) {
   currentMode = mode;
@@ -420,19 +431,29 @@ function getVideoTrack() {
 // ── Zoom ─────────────────────────────────────────
 function applyZoom(val) {
   val = parseFloat(val);
+  currentZoom = val;
   document.getElementById('zoom-val').textContent = val.toFixed(1) + '×';
+  // обновляем пресеты
+  document.querySelectorAll('.zoom-preset').forEach(btn => {
+    btn.classList.toggle('active', parseFloat(btn.textContent) === Math.round(val));
+  });
   const track = getVideoTrack();
   if (!track) return;
   try {
     const caps = track.getCapabilities();
     if (caps.zoom) {
-      // Clamp to actual camera range
       const zMin = caps.zoom.min || 1;
-      const zMax = caps.zoom.max || 5;
+      const zMax = caps.zoom.max || 8;
       const zVal = Math.min(Math.max(val, zMin), zMax);
       track.applyConstraints({ advanced: [{ zoom: zVal }] }).catch(() => {});
     }
   } catch(_) {}
+}
+
+function setZoomPreset(val) {
+  const slider = document.getElementById('zoom-slider');
+  slider.value = val;
+  applyZoom(val);
 }
 
 // ── Torch ─────────────────────────────────────────
@@ -443,7 +464,7 @@ async function toggleTorch() {
     torchOn = !torchOn;
     await track.applyConstraints({ advanced: [{ torch: torchOn }] });
     const btn = document.getElementById('torch-btn');
-    btn.textContent = torchOn ? '🔦 Фонарик включён' : '🔦 Фонарик выключен';
+    btn.textContent = torchOn ? '🔦 Вкл' : '🔦 Фонарик';
     btn.classList.toggle('on', torchOn);
   } catch(e) {
     torchOn = false;
@@ -455,50 +476,88 @@ async function toggleTorch() {
 function probeCapabilities() {
   setTimeout(() => {
     const track = getVideoTrack();
-    if (!track) return;
-    try {
-      const caps = track.getCapabilities();
 
-      // Zoom
+    // Всегда показываем панель и строку с фонариком
+    document.getElementById('scan-controls').classList.add('show');
+    document.getElementById('cam-row').style.display = 'flex';
+
+    if (!track) {
+      document.getElementById('zoom-unavail').style.display = 'block';
+      return;
+    }
+
+    try {
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+
+      // ── Зум ──
       if (caps.zoom) {
         zoomSupported = true;
         const slider = document.getElementById('zoom-slider');
-        slider.min   = caps.zoom.min   || 1;
-        slider.max   = caps.zoom.max   || 5;
-        slider.step  = caps.zoom.step  || 0.1;
-        slider.value = 1;
-        document.getElementById('zoom-row').style.display = 'flex';
+        const zMin   = caps.zoom.min || 1;
+        const zMax   = Math.min(caps.zoom.max || 5, 8);
+        slider.min   = zMin;
+        slider.max   = zMax;
+        slider.step  = caps.zoom.step || 0.1;
+        slider.value = currentZoom;
+        document.getElementById('zoom-bar').style.display  = 'flex';
+
+        // пресеты — только те что в диапазоне камеры
+        const presets = document.querySelectorAll('.zoom-preset');
+        let anyVisible = false;
+        presets.forEach(btn => {
+          const v = parseFloat(btn.textContent);
+          if (v <= zMax) { btn.style.display = ''; anyVisible = true; }
+          else btn.style.display = 'none';
+        });
+        if (anyVisible) document.getElementById('zoom-presets').style.display = 'flex';
+      } else {
+        document.getElementById('zoom-unavail').style.display = 'block';
       }
 
-      // Torch
+      // ── Фонарик ──
       if (caps.torch) {
         torchSupported = true;
-        document.getElementById('torch-btn').style.display = 'flex';
+        // кнопка уже видима — ничего дополнительно не нужно
+      } else {
+        // Скрываем если нет torch, но оставляем строку если есть зум
+        document.getElementById('torch-btn').style.display = 'none';
       }
 
-      // Show settings toggle if anything is available
-      if (zoomSupported || torchSupported) {
-        document.getElementById('settings-toggle').classList.add('show');
-      }
-
-      // Auto-apply continuous autofocus
+      // Автофокус
       if (caps.focusMode && caps.focusMode.includes('continuous')) {
         track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
       }
 
     } catch(e) {
       console.log('Capability probe error:', e);
+      document.getElementById('zoom-unavail').style.display = 'block';
     }
-  }, 800); // wait for stream to stabilize
+  }, 900);
 }
 
 // ── Scanner ──────────────────────────────────────────
 async function startScanner() {
   startBtn.style.display = 'none';
   torchOn = false;
+  zoomSupported = false;
+  currentZoom = 1;
+
+  // Скрываем/сбрасываем панель контролов
+  const scanControls = document.getElementById('scan-controls');
+  scanControls.classList.remove('show');
+  document.getElementById('zoom-bar').style.display    = 'none';
+  document.getElementById('cam-row').style.display     = 'none';
+  document.getElementById('zoom-presets').style.display = 'none';
+  document.getElementById('zoom-unavail').style.display = 'none';
+  document.getElementById('zoom-slider').value = 1;
+  document.getElementById('zoom-val').textContent = '1×';
   const torchBtn = document.getElementById('torch-btn');
-  torchBtn.textContent = '🔦 Фонарик выключен';
+  torchBtn.textContent = '🔦 Фонарик';
   torchBtn.classList.remove('on');
+  torchBtn.style.display = '';
+  document.querySelectorAll('.zoom-preset').forEach((b, i) => {
+    b.classList.toggle('active', i === 0);
+  });
 
   setStatus('Запрашиваю доступ к камере…');
 
@@ -644,13 +703,13 @@ function onScanSuccess(raw) {
   scanActive = false;
   scanner.stop().catch(() => {});
 
-  // Выключаем фонарик при успехе
+  // Выключаем фонарик и скрываем контролы
   if (torchOn) {
     const track = getVideoTrack();
     if (track) track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
     torchOn = false;
-    document.getElementById('torch-btn').classList.remove('on');
   }
+  document.getElementById('scan-controls').classList.remove('show');
 
   try { navigator.vibrate?.(120); } catch(_) {}
 
@@ -941,6 +1000,7 @@ function rescan() {
   sendBtnEl.classList.remove('show');
   rescanBtn.classList.remove('show');
   document.getElementById('manual').value = '';
+  document.getElementById('scan-controls').classList.remove('show');
   setStatus('');
   startBtn.style.display = 'block';
 }
