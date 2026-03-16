@@ -597,7 +597,7 @@ async function startScanner() {
   const scanConfig = {
     fps: 30,
     qrbox: currentMode === 'ean' ? qrboxEan : qrboxCrpt,
-    aspectRatio: currentMode === 'ean' ? 1.7 : 1.0,
+    aspectRatio: 1.0,
     formatsToSupport: currentMode === 'ean' ? eanFormats : crptFormats,
     disableFlip: false,
   };
